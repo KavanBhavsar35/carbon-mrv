@@ -12,6 +12,14 @@ correct regardless of bcrypt rounds configured elsewhere.
 import uuid
 from datetime import datetime, timezone, timedelta
 
+import bcrypt
+
+# Fix passlib 1.7.4 compatibility with bcrypt 4.x/5.x
+if not hasattr(bcrypt, "__about__"):
+    class __about__:
+        __version__ = getattr(bcrypt, "__version__", "4.0.0")
+    bcrypt.__about__ = __about__
+
 from passlib.context import CryptContext
 
 from app.db.session import SessionLocal
