@@ -52,31 +52,16 @@ export type RegistrationStatusResult = {
   buyerProfile?: BuyerProfileData | null;
 };
 
+import { getAuthenticatedUser } from '@/lib/auth';
+
 /**
  * Check current user onboarding / registration status
  */
 export async function getRegistrationStatusAction(): Promise<ActionResponse<RegistrationStatusResult>> {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return { success: false, error: 'Unauthorized: User not logged in' };
-    }
-
-    const dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      include: {
-        generatorProfile: true,
-        buyerProfile: true
-      }
-    });
-
+    const dbUser = await getAuthenticatedUser();
     if (!dbUser) {
-      return {
-        success: true,
-        data: {
-          isOnboarded: false
-        }
-      };
+      return { success: false, error: 'Unauthorized: User not logged in' };
     }
 
     const hasProfile =
