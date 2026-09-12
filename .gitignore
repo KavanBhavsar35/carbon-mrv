@@ -37,4 +37,5 @@ htmlcov/
 script.js
 .claude/
 .agents/
+.opencode/
 data/
