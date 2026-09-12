@@ -1,175 +1,177 @@
-import json
-import os
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from backend.app.database import get_db
-from backend.app.models.models import Project, ProjectEvidence, MLReport, BlockchainTransaction, User
-from backend.app.schemas.schemas import ProjectCreate, ProjectResponse, EvidenceResponse, MLReportResponse
-from backend.app.services.auth_service import get_current_user
-from backend.app.services.ml_client import ml_client
-from backend.app.services.blockchain_client import blockchain_service
-from ml.preprocessing.image_loader import compute_sha256_bytes
 
-router = APIRouter(prefix="/projects", tags=["Projects"])
+from app.db.session import get_db
+from app.core.deps import get_current_user, get_current_user_optional, require_roles
+from app.models.models import Project, ProjectUser, User, IoTDevice, Measurement, CarbonCredit, Transaction, MLReport, VerificationReview
+from app.models.enums import ProjectStatus, ProjectUserRole, UserRole
+from app.schemas.project import (
+    ProjectCreate, ProjectUpdate, ProjectResponse,
+    ProjectStatusUpdate, ProjectUserCreate, ProjectUserResponse,
+)
+from app.schemas.measurement import MeasurementResponse
+from app.schemas.iot_device import IoTDeviceResponse
+from app.schemas.credit import CarbonCreditResponse
+from app.schemas.verification import VerificationReviewCreate, VerificationReviewResponse
+from app.schemas.transaction import TransactionResponse
 
-@router.post("", response_model=ProjectResponse)
+router = APIRouter(prefix="/api/v1/projects", tags=["Projects"])
+
+
+@router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 def create_project(
-    project_in: ProjectCreate,
+    payload: ProjectCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
 ):
     project = Project(
         owner_id=current_user.id,
-        project_name=project_in.project_name,
-        description=project_in.description,
-        project_type=project_in.project_type,
-        state=project_in.state,
-        district=project_in.district,
-        coordinates_lat=project_in.coordinates_lat or 21.85,
-        coordinates_lng=project_in.coordinates_lng or 88.90,
-        total_area_ha=project_in.total_area_ha or 0.0,
-        status="ACTIVE"
+        organization_name=payload.organization_name,
+        organization_type=payload.organization_type,
+        contact_person=payload.contact_person,
+        email=payload.email,
+        phone=payload.phone,
+        project_name=payload.project_name,
+        description=payload.description,
+        project_type=payload.project_type,
+        state=payload.state,
+        district=payload.district,
+        village=payload.village,
+        coordinates=payload.coordinates,
+        total_area=payload.total_area,
+        estimated_credits_per_year=payload.estimated_credits_per_year,
+        registration_number=payload.registration_number,
+        has_legal_permits=payload.has_legal_permits,
+        has_survey_report=payload.has_survey_report,
+        has_environmental_clearance=payload.has_environmental_clearance,
+        status=ProjectStatus.PENDING,
+        total_credits_generated=0.0,
     )
     db.add(project)
     db.commit()
     db.refresh(project)
 
-    # Record on blockchain
-    onchain_res = blockchain_service.register_project(
+    db.add(ProjectUser(
         project_id=project.id,
-        project_type_idx=0,
-        evidence_hash="0x" + ("0" * 64)
-    )
-    project.onchain_project_id = project.id
-    project.blockchain_tx_hash = onchain_res["tx_hash"]
-
-    tx_log = BlockchainTransaction(
-        tx_hash=onchain_res["tx_hash"],
-        block_number=onchain_res["block_number"],
-        contract_address=onchain_res["contract_address"],
-        event_name="ProjectRegistered",
-        payload_json=json.dumps({"project_id": project.id, "owner": current_user.email})
-    )
-    db.add(tx_log)
+        user_id=current_user.id,
+        role=ProjectUserRole.OWNER,
+    ))
     db.commit()
-    db.refresh(project)
+    return project
 
-    return ProjectResponse.model_validate(project)
 
-@router.get("", response_model=List[ProjectResponse])
-def list_projects(db: Session = Depends(get_db)):
-    projects = db.query(Project).all()
-    return [ProjectResponse.model_validate(p) for p in projects]
+@router.get("", response_model=list[ProjectResponse])
+def list_projects(
+    status: Optional[str] = None,
+    project_type: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Project)
+    if status:
+        query = query.filter(Project.status == ProjectStatus(status))
+    if project_type:
+        from app.models.enums import ProjectType
+        query = query.filter(Project.project_type == ProjectType(project_type))
+    return query.all()
+
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(project_id: str, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return ProjectResponse.model_validate(project)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    return project
 
-@router.post("/{project_id}/evidence", response_model=EvidenceResponse)
-async def upload_evidence(
+
+@router.put("/{project_id}", response_model=ProjectResponse)
+def update_project(
     project_id: str,
-    file_type: str = Form("BASELINE_IMAGE"), # BASELINE_IMAGE or CURRENT_IMAGE
-    file: UploadFile = File(...),
+    payload: ProjectUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
-    content = await file.read()
-    sha256_hash = compute_sha256_bytes(content)
+    is_owner = project.owner_id == current_user.id
+    is_admin = current_user.role == UserRole.ADMIN
+    if not is_owner and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only project owner or admin can edit",
+        )
 
-    upload_dir = os.path.join("uploads", project_id)
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, file.filename)
+    if project.status not in (ProjectStatus.PENDING, ProjectStatus.APPROVED):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot edit project in current status",
+        )
 
-    with open(file_path, "wb") as f:
-        f.write(content)
-
-    evidence = ProjectEvidence(
-        project_id=project.id,
-        file_name=file.filename,
-        file_type=file_type,
-        file_path=file_path,
-        sha256_hash=sha256_hash,
-        file_size_bytes=len(content)
-    )
-    db.add(evidence)
-
-    # Set as primary hash if baseline
-    if not project.primary_evidence_hash or file_type == "BASELINE_IMAGE":
-        project.primary_evidence_hash = sha256_hash
+    update_data = payload.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(project, field, value)
 
     db.commit()
-    db.refresh(evidence)
-    return EvidenceResponse.model_validate(evidence)
+    db.refresh(project)
+    return project
 
-@router.get("/{project_id}/evidence", response_model=List[EvidenceResponse])
-def get_evidence_list(project_id: str, db: Session = Depends(get_db)):
-    evidences = db.query(ProjectEvidence).filter(ProjectEvidence.project_id == project_id).all()
-    return [EvidenceResponse.model_validate(e) for e in evidences]
 
-@router.post("/{project_id}/analyze", response_model=MLReportResponse)
-async def trigger_analysis(
+@router.put("/{project_id}/status", response_model=ProjectResponse)
+def update_project_status(
     project_id: str,
-    baseline_target_ha: Optional[float] = None,
-    current_target_ha: Optional[float] = None,
+    payload: ProjectStatusUpdate,
+    current_user: User = Depends(require_roles(UserRole.VERIFIER)),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
-    # Fetch uploaded evidences or use project demo parameters
-    evidences = db.query(ProjectEvidence).filter(ProjectEvidence.project_id == project_id).all()
-    base_img = evidences[0].file_path if evidences else "synthetic_baseline"
-    curr_img = evidences[1].file_path if len(evidences) > 1 else "synthetic_current"
+    try:
+        new_status = ProjectStatus(payload.status)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status")
 
-    # Step 1: Remote Sensing Analysis
-    analysis_res = await ml_client.analyze_project(
+    project.status = new_status
+    if new_status in (ProjectStatus.APPROVED, ProjectStatus.REJECTED):
+        project.total_credits_generated = project.estimated_credits_per_year
+
+    review = VerificationReview(
         project_id=project.id,
-        baseline_image=base_img,
-        current_image=curr_img,
-        project_type=project.project_type,
-        baseline_target_ha=baseline_target_ha,
-        current_target_ha=current_target_ha
+        verifier_id=current_user.id,
+        status=new_status,
+        comments=None,
+        ml_report_id=None,
     )
-
-    # Step 2: Carbon Estimation
-    carbon_res = await ml_client.estimate_carbon(
-        project_id=project.id,
-        area_hectares=analysis_res["current_area_ha"],
-        project_type=project.project_type,
-        methodology="CONFIGURABLE_MANGROVE_METHOD"
-    )
-
-    # Update project state
-    project.baseline_area_ha = analysis_res["baseline_area_ha"]
-    project.current_area_ha = analysis_res["current_area_ha"]
-    project.total_area_ha = analysis_res["current_area_ha"]
-    project.area_change_pct = analysis_res["change_percent"]
-
-    ml_report = MLReport(
-        project_id=project.id,
-        baseline_area_ha=analysis_res["baseline_area_ha"],
-        current_area_ha=analysis_res["current_area_ha"],
-        change_ha=analysis_res["change_ha"],
-        change_percent=analysis_res["change_percent"],
-        confidence=analysis_res["confidence"],
-        estimated_tco2e=carbon_res["estimated_tco2e"],
-        lower_bound_tco2e=carbon_res["lower_bound_tco2e"],
-        upper_bound_tco2e=carbon_res["upper_bound_tco2e"],
-        methodology=carbon_res["methodology"],
-        details_json=json.dumps(analysis_res)
-    )
-    db.add(ml_report)
+    db.add(review)
     db.commit()
-    db.refresh(ml_report)
+    db.refresh(project)
+    return project
 
-    return MLReportResponse.model_validate(ml_report)
+
+@router.get("/{project_id}/measurements", response_model=list[MeasurementResponse])
+def get_project_measurements(project_id: str, db: Session = Depends(get_db)):
+    return db.query(Measurement).filter(Measurement.project_id == project_id).all()
+
+
+@router.get("/{project_id}/devices", response_model=list[IoTDeviceResponse])
+def get_project_devices(project_id: str, db: Session = Depends(get_db)):
+    return db.query(IoTDevice).filter(IoTDevice.project_id == project_id).all()
+
+
+@router.get("/{project_id}/credits", response_model=list[CarbonCreditResponse])
+def get_project_credits(project_id: str, db: Session = Depends(get_db)):
+    return db.query(CarbonCredit).filter(CarbonCredit.project_id == project_id).all()
+
+
+@router.get("/{project_id}/reviews", response_model=list[VerificationReviewResponse])
+def get_project_reviews(project_id: str, db: Session = Depends(get_db)):
+    return db.query(VerificationReview).filter(VerificationReview.project_id == project_id).all()
+
+
+@router.get("/{project_id}/transactions", response_model=list[TransactionResponse])
+def get_project_transactions(project_id: str, db: Session = Depends(get_db)):
+    return db.query(Transaction).filter(Transaction.project_id == project_id).all()
