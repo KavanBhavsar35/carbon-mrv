@@ -72,6 +72,9 @@ model LandParcel {
   generator          GeneratorProfile    @relation(fields: [generatorId], references: [id])
   parcelName         String
   ecosystemType      String              // MANGROVE, SEAGRASS, SALT_MARSH, CORAL_REEF, KELP_FOREST
+  state              String?
+  district           String?
+  village            String?
   geofence           String              // Storing JSON string for SQLite
   totalAreaHa        Float
   claimedCredits     Float

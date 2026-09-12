@@ -199,9 +199,15 @@ export default function MyParcelsPage() {
                         <CardTitle className="text-base font-semibold truncate">
                           {parcel.parcelName}
                         </CardTitle>
-                        <CardDescription className="capitalize text-xs mt-0.5">
-                          {parcel.ecosystemType.replace('_', ' ').toLowerCase()}
-                        </CardDescription>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                          <span className="capitalize font-medium text-foreground">{parcel.ecosystemType.replace('_', ' ').toLowerCase()}</span>
+                          {(parcel.village || parcel.district || parcel.state) && (
+                            <>
+                              <span>&middot;</span>
+                              <span className="truncate">{[parcel.village, parcel.district, parcel.state].filter(Boolean).join(', ')}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                       {getStatusBadge(parcel.status)}
                     </div>

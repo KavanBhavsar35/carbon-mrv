@@ -29,6 +29,9 @@ export default function NewParcelPage() {
     defaultValues: {
       parcelName: '',
       ecosystemType: 'MANGROVE',
+      state: '',
+      district: '',
+      village: '',
       claimedCredits: 100,
       geofence: '',
     } as ParcelRegistrationInput,
@@ -79,14 +82,15 @@ export default function NewParcelPage() {
         }}
         className='space-y-6'
       >
+        {/* Section 1: Parcel Details */}
         <Card className='border shadow-xs'>
           <CardHeader className='pb-4'>
             <div className='flex items-center gap-2'>
               <Trees className='h-5 w-5 text-emerald-600' />
-              <CardTitle className='text-lg'>Parcel Details</CardTitle>
+              <CardTitle className='text-lg'>1. Parcel Specifications</CardTitle>
             </div>
             <CardDescription>
-              Basic information and estimated carbon credits for this area.
+              Basic ecosystem classification and estimated carbon credits for this area.
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
@@ -97,7 +101,7 @@ export default function NewParcelPage() {
                   <field.TextField
                     label='Parcel Name'
                     required
-                    placeholder='e.g. Delta Mangrove Site A'
+                    placeholder='e.g. Sundarbans Mangrove Conservation Area'
                   />
                 )}
               />
@@ -119,11 +123,11 @@ export default function NewParcelPage() {
                 name='claimedCredits'
                 children={(field) => (
                   <field.TextField
-                    label='Claimed Credits (tCO2e)'
+                    label='Claimed Carbon Credits (tCO2e)'
                     type='number'
                     required
                     placeholder='100'
-                    description='Your estimate of total carbon sequestered'
+                    description='Your initial estimate of sequestered carbon'
                   />
                 )}
               />
@@ -131,14 +135,64 @@ export default function NewParcelPage() {
           </CardContent>
         </Card>
 
+        {/* Section 2: Geographic Location */}
         <Card className='border shadow-xs'>
           <CardHeader className='pb-4'>
             <div className='flex items-center gap-2'>
               <MapPin className='h-5 w-5 text-emerald-600' />
-              <CardTitle className='text-lg'>Parcel Boundary (Geofence)</CardTitle>
+              <CardTitle className='text-lg'>2. Geographic Location & Administrative Bounds</CardTitle>
             </div>
             <CardDescription>
-              Draw a polygon representing the exact boundaries of your parcel.
+              Regional administrative identifiers and jurisdictional jurisdiction for land verification.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+              <form.AppField
+                name='state'
+                children={(field) => (
+                  <field.TextField
+                    label='State / Province'
+                    required
+                    placeholder='e.g. West Bengal, Gujarat'
+                  />
+                )}
+              />
+
+              <form.AppField
+                name='district'
+                children={(field) => (
+                  <field.TextField
+                    label='District / Region'
+                    required
+                    placeholder='e.g. South 24 Parganas'
+                  />
+                )}
+              />
+
+              <form.AppField
+                name='village'
+                children={(field) => (
+                  <field.TextField
+                    label='Village / Local Body'
+                    required
+                    placeholder='e.g. Gosaba, Mundra'
+                  />
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section 3: GPS Geofence Polygon */}
+        <Card className='border shadow-xs'>
+          <CardHeader className='pb-4'>
+            <div className='flex items-center gap-2'>
+              <MapPin className='h-5 w-5 text-emerald-600' />
+              <CardTitle className='text-lg'>3. GPS Geofence Polygon Boundaries</CardTitle>
+            </div>
+            <CardDescription>
+              Draw or adjust the polygon boundary on the map representing the exact perimeter of your parcel.
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>

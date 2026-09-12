@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageContainer from '@/components/layout/page-container';
 import Link from 'next/link';
 import { getAllCreditsAction } from '@/features/buyer/actions/buyer-actions';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Coins, Trees } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminCreditsPage() {
@@ -29,8 +29,10 @@ export default function AdminCreditsPage() {
     <PageContainer>
       <div className="space-y-6 pb-12">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">⚡</span>
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Coins className="h-5 w-5" />
+            </div>
             <h1 className="text-2xl font-bold tracking-tight">Admin: Master Carbon Credit Inventory</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
@@ -44,8 +46,10 @@ export default function AdminCreditsPage() {
             <p className='text-sm text-muted-foreground'>Loading credit inventory...</p>
           </div>
         ) : credits.length === 0 ? (
-          <div className="bg-card border rounded-2xl p-12 text-center space-y-2">
-            <div className="text-3xl">🌱</div>
+          <div className="bg-card border rounded-2xl p-12 text-center space-y-3">
+            <div className="inline-flex p-3 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Trees className="h-8 w-8" />
+            </div>
             <h3 className="font-bold text-lg">No Carbon Credits Minted Yet</h3>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto">
               Once an approver validates and approves a parcel, minted on-chain credits will be listed here.

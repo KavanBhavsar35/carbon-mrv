@@ -212,6 +212,16 @@ export default function GeneratorParcelDetailPage() {
                   </div>
                 </div>
 
+                {(parcel.village || parcel.district || parcel.state) && (
+                  <div className="border-t pt-3">
+                    <span className="text-xs text-muted-foreground">Location</span>
+                    <div className="font-medium text-sm text-foreground flex items-center gap-1.5 mt-0.5">
+                      <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      <span>{[parcel.village, parcel.district, parcel.state].filter(Boolean).join(', ')}</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="border-t pt-3">
                   <span className="text-xs text-muted-foreground">Total Measured Area</span>
                   <div className="font-semibold text-base font-mono">

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Trees, ShieldCheck, Briefcase, Zap } from 'lucide-react';
 
 export type AppRole = 'GENERATOR' | 'APPROVER' | 'BUYER' | 'ADMIN';
 
@@ -38,47 +39,51 @@ export default function RoleSwitcher() {
       <span className="text-muted-foreground font-semibold px-1 hidden lg:inline">Role:</span>
       <button
         onClick={() => handleRoleChange('GENERATOR')}
-        className={`px-2 py-1 rounded font-medium transition ${
+        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded font-medium transition ${
           currentRole === 'GENERATOR'
-            ? 'bg-emerald-600 text-white shadow-sm font-semibold'
+            ? 'bg-emerald-600 text-white shadow-xs font-semibold'
             : 'text-muted-foreground hover:text-foreground'
         }`}
         title="Generator Role"
       >
-        🌱 Generator
+        <Trees className="h-3.5 w-3.5" />
+        <span>Generator</span>
       </button>
       <button
         onClick={() => handleRoleChange('APPROVER')}
-        className={`px-2 py-1 rounded font-medium transition ${
+        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded font-medium transition ${
           currentRole === 'APPROVER'
-            ? 'bg-indigo-600 text-white shadow-sm font-semibold'
+            ? 'bg-indigo-600 text-white shadow-xs font-semibold'
             : 'text-muted-foreground hover:text-foreground'
         }`}
         title="Approver / Auditor Role"
       >
-        🛡️ Approver
+        <ShieldCheck className="h-3.5 w-3.5" />
+        <span>Approver</span>
       </button>
       <button
         onClick={() => handleRoleChange('BUYER')}
-        className={`px-2 py-1 rounded font-medium transition ${
+        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded font-medium transition ${
           currentRole === 'BUYER'
-            ? 'bg-purple-600 text-white shadow-sm font-semibold'
+            ? 'bg-purple-600 text-white shadow-xs font-semibold'
             : 'text-muted-foreground hover:text-foreground'
         }`}
         title="Buyer Role"
       >
-        💼 Buyer
+        <Briefcase className="h-3.5 w-3.5" />
+        <span>Buyer</span>
       </button>
       <button
         onClick={() => handleRoleChange('ADMIN')}
-        className={`px-2 py-1 rounded font-medium transition ${
+        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded font-medium transition ${
           currentRole === 'ADMIN'
-            ? 'bg-amber-600 text-white shadow-sm font-semibold'
+            ? 'bg-amber-600 text-white shadow-xs font-semibold'
             : 'text-muted-foreground hover:text-foreground'
         }`}
         title="Admin Master Role"
       >
-        ⚡ Admin
+        <Zap className="h-3.5 w-3.5" />
+        <span>Admin</span>
       </button>
     </div>
   );

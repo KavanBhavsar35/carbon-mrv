@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageContainer from '@/components/layout/page-container';
 import { getAllTransactionsAction } from '@/features/buyer/actions/buyer-actions';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminTransactionsPage() {
@@ -28,8 +28,10 @@ export default function AdminTransactionsPage() {
     <PageContainer>
       <div className="space-y-6 pb-12">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">⚡</span>
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Zap className="h-5 w-5" />
+            </div>
             <h1 className="text-2xl font-bold tracking-tight">Admin: Immutable Blockchain Ledger</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1">

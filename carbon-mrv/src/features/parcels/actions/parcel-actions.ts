@@ -40,7 +40,7 @@ export async function createParcelAction(
       return { success: false, error: errorMsg };
     }
 
-    const { parcelName, ecosystemType, claimedCredits, geofence } = validated.data;
+    const { parcelName, ecosystemType, state, district, village, claimedCredits, geofence } = validated.data;
 
     // Calculate area server-side using Turf.js
     let totalAreaHa = 0;
@@ -62,6 +62,9 @@ export async function createParcelAction(
         generatorId: generatorProfile.id,
         parcelName,
         ecosystemType,
+        state,
+        district,
+        village,
         claimedCredits,
         geofence,
         totalAreaHa,

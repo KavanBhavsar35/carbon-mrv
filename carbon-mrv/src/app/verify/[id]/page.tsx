@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import { Search } from 'lucide-react';
 
 interface VerifyPageProps {
   params: Promise<{ id: string }>;
@@ -32,7 +33,9 @@ export default async function VerifyCreditPage({ params }: VerifyPageProps) {
     return (
       <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans p-6 md:p-12 flex items-center justify-center">
         <div className="max-w-md w-full bg-neutral-900 border border-neutral-800 rounded-2xl p-8 text-center space-y-4 shadow-2xl">
-          <div className="text-4xl">🔍</div>
+          <div className="inline-flex p-3 rounded-full bg-neutral-800 text-neutral-400">
+            <Search className="h-8 w-8" />
+          </div>
           <h2 className="text-xl font-bold text-white">Certificate Not Found</h2>
           <p className="text-xs text-neutral-400">
             No on-chain credit record matches query identifier:
