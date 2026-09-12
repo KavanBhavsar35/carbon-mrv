@@ -53,3 +53,27 @@ class VerifyClaimResponse(BaseModel):
     is_anomaly: bool
     reasons: List[str]
     project_id: str
+
+class DronePredictRequest(BaseModel):
+    images: List[str]
+    ecosystemType: str = "MANGROVE"
+    areaHa: Optional[float] = None
+    claimedCredits: Optional[float] = None
+
+class SatellitePredictRequest(BaseModel):
+    images: List[str]
+    parcelId: str = "parcel-default"
+    priorEstimate: float = 0.0
+
+class CarbonEstimatePredictResponse(BaseModel):
+    estimatedCredits: float
+    vegetationCoverPct: float
+    estimatedBiomass: float
+    confidence: float
+    modelVersion: str
+    additionalityRating: Optional[str] = "AAA"
+    bufferPoolCredits: Optional[float] = 0.0
+    netTradableCredits: Optional[float] = 0.0
+    riskLevel: Optional[str] = "LOW"
+    anomalyScore: Optional[float] = 0.05
+    tilesProcessed: Optional[int] = 1

@@ -11,7 +11,10 @@ export default function LandingPage() {
           <Icons.logo className='h-8 w-8 text-primary' />
           <span className='text-xl font-bold'>Carbon MRV</span>
         </div>
-        <nav className='flex items-center gap-4'>
+        <nav className='flex items-center gap-3'>
+          <Link href='/demo' className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow flex items-center gap-1.5 transition">
+            <span>✨</span> Live Judge Demo
+          </Link>
           <Link href='/auth/sign-in' className={buttonVariants({ variant: 'ghost' })}>
             Sign In
           </Link>
@@ -33,18 +36,18 @@ export default function LandingPage() {
             Empowering the circular carbon ecosystem with transparent Measurement, Reporting, and Verification. 
             Connect buyers and generators with immutable on-chain tracking and AI-powered estimation.
           </p>
-          <div className='mt-10 flex items-center justify-center gap-x-6'>
+          <div className='mt-10 flex items-center justify-center gap-x-4 flex-wrap gap-y-3'>
             <Link
-              href='/auth/sign-up'
-              className={cn(buttonVariants({ size: 'lg' }), 'gap-2')}
+              href='/demo'
+              className={cn(buttonVariants({ size: 'lg' }), 'gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-500 hover:to-teal-500 shadow-lg')}
             >
-              Start Generating Credits <Icons.chevronRight className='h-4 w-4' />
+              <span>🚀</span> Launch Interactive Prototype Demo <Icons.chevronRight className='h-4 w-4' />
             </Link>
             <Link
-              href='#references'
+              href='/verify/101'
               className={buttonVariants({ variant: 'outline', size: 'lg' })}
             >
-              Learn More
+              View Public Certificate
             </Link>
           </div>
         </section>

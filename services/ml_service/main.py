@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from services.ml_service.routes.analysis import router as analysis_router
 from services.ml_service.routes.carbon import router as carbon_router
 from services.ml_service.routes.verification import router as verification_router
+from services.ml_service.routes.predict import router as predict_router
 from services.ml_service.services.ml_engine import ml_engine
 
 app = FastAPI(
@@ -21,6 +22,7 @@ app.add_middleware(
 )
 
 @app.get("/ml/health", tags=["Health"])
+@app.get("/health", tags=["Health"])
 async def health():
     return {
         "status": "healthy",
@@ -28,12 +30,16 @@ async def health():
         "models_loaded": ml_engine.is_initialized
     }
 
-# Include ML subrouters with /ml prefix
+# Include predict endpoints directly at root for Next.js ml-client.ts compatibility
+app.include_router(predict_router)
+
+# Include legacy ML subrouters with /ml prefix
 app.include_router(analysis_router, prefix="/ml")
 app.include_router(carbon_router, prefix="/ml")
 app.include_router(verification_router, prefix="/ml")
+app.include_router(predict_router, prefix="/ml")
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("ML_PORT", "8001"))
+    port = int(os.getenv("ML_PORT", "8000"))
     uvicorn.run("services.ml_service.main:app", host="0.0.0.0", port=port, reload=True)
