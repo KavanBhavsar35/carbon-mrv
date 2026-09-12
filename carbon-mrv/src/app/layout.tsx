@@ -20,34 +20,23 @@ export const metadata: Metadata = {
     ? { metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL) }
     : {}),
   title: {
-    default: 'Shadcn Dashboard - Next.js Admin Dashboard Template',
-    template: '%s | Shadcn Dashboard'
+    default: 'Carbon MRV',
+    template: '%s | Carbon MRV'
   },
-  description:
-    'Free, open source admin dashboard starter built with Next.js 16, shadcn/ui, Tailwind CSS, and TypeScript.',
+  description: 'Verifiable Carbon Credit & Offset Tracking Platform (MRV 2.0)',
   openGraph: {
-    title: 'Shadcn Dashboard - Next.js Admin Dashboard Template',
-    description:
-      'Free, open source admin dashboard starter built with Next.js 16, shadcn/ui, Tailwind CSS, and TypeScript.',
-    siteName: 'Shadcn Dashboard',
-    type: 'website',
-    images: [
-      {
-        url: '/shadcn-dashboard.png',
-        width: 3200,
-        height: 1600,
-        alt: 'Shadcn Dashboard overview page'
-      }
-    ]
+    title: 'Carbon MRV',
+    description: 'Verifiable Carbon Credit & Offset Tracking Platform (MRV 2.0)',
+    siteName: 'Carbon MRV',
+    type: 'website'
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Shadcn Dashboard - Next.js Admin Dashboard Template',
-    description:
-      'Free, open source admin dashboard starter built with Next.js 16, shadcn/ui, Tailwind CSS, and TypeScript.',
-    images: ['/shadcn-dashboard.png']
+    title: 'Carbon MRV',
+    description: 'Verifiable Carbon Credit & Offset Tracking Platform (MRV 2.0)'
   }
 };
+
 
 export const viewport: Viewport = {
   themeColor: META_THEME_COLORS.light

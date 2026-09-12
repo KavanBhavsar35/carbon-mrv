@@ -79,7 +79,7 @@ Area + Temporal Change Detection
 
 ### Prerequisites
 - Python 3.11+ (or `uv`)
-- Node.js v20+ & npm
+- Node.js v20+ & pnpm
 
 ### Step 1: Install Dependencies
 ```bash
@@ -92,10 +92,11 @@ npm install
 cd ..
 
 # Frontend dependencies
-cd frontend
-npm install
+cd carbon-mrv
+pnpm install
 cd ..
 ```
+
 
 ### Step 2: Run Tests
 

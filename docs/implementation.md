@@ -1,203 +1,212 @@
-# Carbon MRV — Implementation Plan (docs/implementation.md)
-Circular Carbon Ecosystem — Verifiable Carbon Credit & Offset Tracking System
+# Carbon MRV — Implementation Plan v3 (docs/implementation.md)
+Circular Carbon Ecosystem — Generator / Approver-Admin / Buyer marketplace
 
-**Repo:** `carbon-mrv` (new repo — supersedes the earlier `blue-carbon-mrv` scaffold, same problem statement, old repo https://github.com/KavanBhavsar35/blue-carbon-mrv, use this for old refrence)
-**Team:** Kavan — Frontend (Next.js + shadcn/ui) + Backend (FastAPI + JWT) · **Vatsal** — Blockchain (Solidity/Hardhat) + ML
+**Repo:** `carbon-mrv`
+**Frontend + backend base:** [next-shadcn-dashboard-starter](https://github.com/Kiranism/next-shadcn-dashboard-starter) (Next.js 15 + shadcn/ui + **Clerk**, kept as-is)
+**Team:** Kavan — Frontend + all app backend via **Next.js API routes / Server Actions** · **Vatsal** — Blockchain (mostly done) + **ML microservice (FastAPI, ML-only)**
 
-**Stack decision:** backend moves from the old Flask scaffold to **FastAPI** (SQLAlchemy 2.0 + Alembic + Pydantic v2, `python-jose`/`passlib` for JWT + bcrypt). Old Flask models are the field reference, not the code to keep. Also use **uv** for dependency management. (initiated alread in project root)
-
-```
-backend/     FastAPI + SQLAlchemy + SQLite + JWT auth        → Kavan
-frontend/    Next.js + shadcn/ui                                → Kavan
-blockchain/  Hardhat + Solidity registry contract               → Vatsal
-ml/          vegetation/anomaly verification model + API        → Vatsal
-docs/        this file + API contract + ABI + ML I/O schema
-```
+Change from v2: no custom JWT layer, no FastAPI app backend. Clerk stays (you already know it, starter ships with it — use its potential instead of ripping it out). FastAPI is scoped down to *only* the ML predict service; everything else — profiles, parcels, review queue, credits, transactions, purchases — is Next.js server actions / route handlers hitting the DB directly. Blockchain contract (unchanged) and ML output contract (unchanged) from v1/v2 still apply.
 
 ---
 
-## 0. Interface contract (agree before Phase 1 — blocks both tracks)
+## 0. Role model
 
-So both people can build in parallel without waiting on each other, freeze these three interfaces on Day 0:
+```
+ADMIN      — full CRUD, user management, superset of Approver, analytics
+APPROVER   — reviews borderline/flagged parcel & extension requests only
+GENERATOR  — registers land, claims credits, extends area
+BUYER      — company or individual, purchases + retires credits
+```
 
-1. **REST API shape** (§2 below) — Kavan owns, Vatsal builds ML against it as a spec, not against real backend
-2. **Contract ABI shape** (§3 below) — Vatsal owns, Kavan builds frontend chain calls + backend sync against the ABI once deployed to testnet
-3. **ML output JSON schema** (§4 below) — Vatsal owns, backend just needs to store/display it, doesn't need the model itself
+Role lives in **Clerk `publicMetadata.role`** (set at signup via a role-picker step, or a Clerk `afterSignUp` webhook) and is mirrored into your own `users` table for joins/queries. `ADMIN`/`APPROVER` are set manually in the Clerk dashboard or via an admin-only server action — never self-service at signup.
 
-Once these are written down, Kavan can build the full backend/frontend against mocked responses while Vatsal builds the contract and model independently.
+Route protection: Clerk middleware (`clerkMiddleware` in `middleware.ts`, already scaffolded by the starter) + a small `requireRole()` helper wrapping server actions/route handlers, reading `sessionClaims.metadata.role`.
 
 ---
 
-## 1. Data model (FastAPI / SQLite) — owner: Kavan
+## 1. Core decision logic (unchanged)
 
-| Table | Field | Type | Notes |
+On every claim (initial registration **or** extension/growth update):
+
+1. Generator submits **claimed credits**.
+2. Server action calls the FastAPI ML service (drone estimate on registration, satellite estimate on extension) → **estimated credits**.
+3. `delta = |claimed - estimated| / claimed`
+   - `delta <= AUTO_APPROVE_THRESHOLD` → **auto-approved**, credits queued for on-chain issuance
+   - `AUTO_APPROVE_THRESHOLD < delta <= AUTO_REJECT_THRESHOLD` → **PENDING_REVIEW**, lands in Approver/Admin queue
+   - `delta > AUTO_REJECT_THRESHOLD` → **auto-rejected**, generator can file a **re-request** (fresh review row, history preserved)
+
+Thresholds as env/config constants, not hardcoded — tune live during the hackathon.
+
+---
+
+## 2. Data models (final) — Prisma + SQLite (swap to Postgres later if you outgrow it; SQLite is fine for a hackathon demo and keeps setup to zero)
+
+Why Prisma: it's the fastest-to-wire ORM for Next.js server actions, has a clean migration story, and the starter's TS-first stack expects this shape. All tables below live in one `schema.prisma`, one DB — the ML/FastAPI service never touches this DB directly, it only receives images and returns JSON (see §4).
+
+| Model | Field | Type | Notes |
 |---|---|---|---|
-| **users** | id | UUID pk | |
-| | email | str, unique, indexed | |
-| | hashed_password | str | bcrypt via passlib |
-| | name | str | |
-| | phone | str, nullable | |
-| | role | enum: `ADMIN, PROJECT_OWNER, VERIFIER, USER` | |
-| | wallet_address | str, nullable, unique | 0x… format, validated |
-| | organization | str, nullable | |
-| | country | str, nullable | |
-| | is_active | bool, default true | |
-| | created_at / updated_at | datetime | |
-| **projects** | id | UUID pk | |
-| | owner_id | FK → users | |
-| | organization_name | str | |
-| | organization_type | enum: `NGO, PANCHAYAT, COMMUNITY, COMPANY` | |
-| | contact_person / email / phone | str | |
-| | project_name / description | str / text | |
-| | project_type | enum: `MANGROVE, SEAGRASS, SALT_MARSH, CORAL_REEF, KELP_FOREST` | drives credit-calc methodology |
-| | state / district / village | str | |
-| | coordinates | JSON | geolocation |
-| | total_area | float | hectares |
-| | estimated_credits_per_year | float | |
-| | registration_number | str, nullable | |
-| | has_legal_permits / has_survey_report / has_environmental_clearance | bool | gates approval |
-| | contract_address / token_id | str, nullable | set once minted |
-| | status | enum: `PENDING, APPROVED, ACTIVE, REJECTED, COMPLETED` | |
-| | total_credits_generated | float, default 0 | |
-| | created_at / updated_at | datetime | |
-| **project_users** | id, project_id FK, user_id FK, role (`OWNER,MANAGER,CONTRIBUTOR,VIEWER`), joined_at | | unique(project_id, user_id) |
-| **iot_devices** | id, project_id FK, device_id (unique), name, type (`SENSOR,CAMERA,WEATHER_STATION`), status (`ACTIVE,INACTIVE,MAINTENANCE,ERROR`), last_ping, metadata JSON | | |
-| **measurements** | id, device_id FK, project_id FK, measurement_type (`TEMPERATURE,PH,SALINITY,TURBIDITY,DISSOLVED_OXYGEN,WATER_LEVEL,BIOMASS`), value float, unit str, timestamp, metadata JSON | | time-series, indexed on (project_id, timestamp) |
-| **ml_reports** | id, project_id FK, source_images JSON (urls), vegetation_cover_pct float, estimated_biomass float, anomaly_flags JSON, model_version str, confidence float, created_at | | written by ml/, read by backend + verifier UI |
-| **verification_reviews** | id, project_id FK, verifier_id FK, status (`PENDING,APPROVED,REJECTED`), comments text, ml_report_id FK nullable, reviewed_at | | this is the gate before on-chain issuance is allowed |
-| **carbon_credits** | id, project_id FK, onchain_credit_id (uint256, unique), amount float, vintage int, status (`ISSUED,SOLD,RETIRED`), blockchain_tx_hash unique, owner_wallet_address, minted_at, retired_at, retired_reason, certification_body/id nullable | | off-chain index of on-chain state, synced from events |
-| **transactions** | id, type (`MINT,TRANSFER,PURCHASE,RETIRE`), from_user_id, to_user_id, project_id, credit_id, amount, price_per_credit, total_price, currency default `ETH`, tx_hash unique, block_number, status (`PENDING,PROCESSING,COMPLETED,FAILED`), metadata JSON, created_at | | |
+| **User** | id | cuid pk | |
+| | clerkId | String, unique | mirrors Clerk user |
+| | email | String, unique | |
+| | name | String | |
+| | phone | String? | |
+| | role | enum `ADMIN, APPROVER, GENERATOR, BUYER` | mirrored from Clerk publicMetadata, source of truth for queries |
+| | walletAddress | String?, unique | |
+| | isActive | Boolean, default true | |
+| | createdAt / updatedAt | DateTime | |
+| **GeneratorProfile** | id, userId FK unique | | 1:1 |
+| | entityType | enum `INDIVIDUAL, NGO, PANCHAYAT, COMMUNITY, COMPANY` | |
+| | organizationName | String? | required if entityType != INDIVIDUAL |
+| | contactPerson / contactPhone | String | |
+| | state / district / village | String | |
+| | registrationNumber | String? | |
+| | hasLegalPermits / hasSurveyReport / hasEnvironmentalClearance | Boolean | |
+| | locked | Boolean, default false | true after first parcel submitted — gates edit form |
+| **BuyerProfile** | id, userId FK unique | | 1:1 |
+| | buyerType | enum `INDIVIDUAL, COMPANY` | |
+| | companyName / industry | String? | |
+| | annualEmissionsTco2e | Float? | |
+| | wantedCredits | Float | |
+| **LandParcel** | id | cuid pk | |
+| | generatorId FK | | |
+| | parcelName | String | |
+| | ecosystemType | enum `MANGROVE, SEAGRASS, SALT_MARSH, CORAL_REEF, KELP_FOREST` | |
+| | geofence | Json | GeoJSON Polygon, drawn via map component |
+| | totalAreaHa | Float | computed server-side from geofence, never trust client value |
+| | claimedCredits | Float | at registration |
+| | contractAddress / tokenId | String? | set once minted |
+| | status | enum `DRAFT, PENDING_ESTIMATE, PENDING_REVIEW, APPROVED, REJECTED` | |
+| | totalCreditsIssued | Float, default 0 | |
+| **ParcelExtension** | id, parcelId FK | | growth/extension claims |
+| | additionalGeofence | Json? | null = same-area growth reclaim |
+| | claimedCredits | Float | |
+| | status | enum `PENDING_ESTIMATE, PENDING_REVIEW, APPROVED, REJECTED` | |
+| **CarbonEstimate** | id | cuid pk | one per registration/extension estimate run |
+| | parcelId FK, extensionId FK? | | exactly one set |
+| | source | enum `DRONE, SATELLITE` | |
+| | sourceImages | Json (string[]) | |
+| | estimatedCredits | Float | |
+| | vegetationCoverPct / estimatedBiomass | Float | from ML output contract |
+| | confidence | Float | |
+| | modelVersion | String | |
+| | deltaPct | Float | computed |
+| | decision | enum `AUTO_APPROVED, PENDING_REVIEW, AUTO_REJECTED` | |
+| **ReviewRequest** | id | cuid pk | Approver/Admin queue |
+| | parcelId FK, extensionId FK? | | |
+| | estimateId FK | | |
+| | isRerequest | Boolean, default false | |
+| | flaggedReason | String? | |
+| | status | enum `PENDING, APPROVED, REJECTED` | |
+| | reviewedById FK?, comments String?, reviewedAt DateTime? | | |
+| **CarbonCredit** | id, parcelId FK | | |
+| | onchainCreditId (BigInt/String, unique), amount Float, vintage Int | | |
+| | status | enum `ISSUED, SOLD, RETIRED` | |
+| | blockchainTxHash unique, ownerWalletAddress | | |
+| | mintedAt, retiredAt, retiredReason | | |
+| **PurchaseRequest** | id, buyerId FK | | |
+| | requestedAmount Float, maxPricePerCredit Float? | | |
+| | status | enum `OPEN, MATCHED, FULFILLED, CANCELLED` | |
+| **Transaction** | id, type enum `MINT, TRANSFER, PURCHASE, RETIRE`, fromUserId, toUserId, parcelId, creditId, amount, pricePerCredit, totalPrice, currency default `ETH`, txHash unique, blockNumber, status enum `PENDING, PROCESSING, COMPLETED, FAILED`, createdAt | | |
 
-Enums as Python `Enum` classes shared between SQLAlchemy models and Pydantic schemas — single source of truth in `app/models/enums.py`.
-
----
-
-## 2. Backend API (FastAPI) — owner: Kavan
-
-| Method | Route | Auth | Purpose |
-|---|---|---|---|
-| POST | `/auth/register` | — | create user, return JWT pair |
-| POST | `/auth/login` | — | JWT access + refresh |
-| POST | `/auth/refresh` | refresh token | rotate access token |
-| GET | `/auth/me` | JWT | current user + role |
-| GET/PUT | `/users/{id}` | JWT (self/admin) | profile |
-| POST | `/projects` | JWT (any) | create project → `PENDING` |
-| GET | `/projects` | — (public list) / JWT for filtered | list/search projects |
-| GET | `/projects/{id}` | — public | project detail |
-| PUT | `/projects/{id}` | JWT (owner) | edit before approval |
-| PUT | `/projects/{id}/status` | JWT (VERIFIER) | approve/reject — writes `verification_reviews` |
-| GET | `/projects/{id}/measurements` | — | |
-| GET | `/projects/{id}/devices` | — | |
-| GET | `/projects/{id}/credits` | — | |
-| POST | `/iot-devices` | JWT (owner) | register device |
-| POST | `/iot-devices/{id}/ping` | device key | heartbeat |
-| POST | `/measurements` | device key or JWT | ingest reading |
-| GET | `/measurements/analytics` | — | aggregates for dashboard |
-| POST | `/ml/verify-project/{id}` | JWT (owner/verifier) | triggers ml/ service, stores `ml_reports` row |
-| GET | `/ml/reports/{project_id}` | — | |
-| GET | `/carbon-credits` | — | |
-| GET | `/carbon-credits/project/{id}` | — | |
-| POST | `/carbon-credits/sync` | internal/service key | called after a confirmed on-chain event to upsert the off-chain index — see §3 |
-| GET | `/verify/{credit_id_or_tx_hash}` | — public, no auth | the judge-facing "verify a credit" endpoint: full chain of custody |
-
-JWT: access token 15–30 min, refresh 7 days, role claim embedded so route guards don't need a DB hit per request.
+**Still dropped (from v1/v2):** multi-user parcel collaboration, IoT devices/measurements time-series, order-book matching. Same reasoning as before.
 
 ---
 
-## 3. Blockchain — owner: Vatsal
+## 3. Screens — unchanged from v2
 
-Replace the old balance-mapping contract with a registry. This is the part that actually satisfies "prevents double-selling."
+Public: landing/stats, login, signup (role picker: Generator/Buyer), public `/verify/[creditIdOrTxHash]`.
+Common: role-aware dashboard.
+Generator: onboarding, register-land (map draw + drone upload), my parcels, update/extend area.
+Buyer: onboarding, marketplace/browse, purchase flow (wallet connect), holdings/retire, order history.
+Approver: review queue, review detail (image compare + approve/reject).
+Admin: everything Approver has + CRUD tables (users/parcels/credits/transactions) + user management + analytics.
 
-**Contract: `CarbonCreditRegistry.sol`**
-
-```solidity
-enum Role { None, Issuer, Verifier, Admin }
-enum Status { Issued, Sold, Retired }
-
-struct Credit {
-    uint256 id;
-    bytes32 projectId;      // keccak256 of the off-chain project UUID
-    uint16  vintage;
-    uint256 amount;
-    address issuer;
-    address currentOwner;
-    Status  status;
-    string  retiredReason;
-    uint256 issuedAt;
-    uint256 retiredAt;
-}
-
-mapping(uint256 => Credit) public credits;
-mapping(address => Role) public roles;
-uint256 public nextCreditId;
-
-event RoleGranted(address indexed account, Role role);
-event CreditIssued(uint256 indexed id, bytes32 indexed projectId, address indexed issuer, uint256 amount, uint16 vintage);
-event CreditTransferred(uint256 indexed id, address indexed from, address indexed to);
-event CreditRetired(uint256 indexed id, address indexed by, string reason);
-
-function grantRole(address account, Role role) external onlyAdmin;
-function issueCredit(bytes32 projectId, uint256 amount, uint16 vintage) external onlyIssuer returns (uint256 id);
-function transferCredit(uint256 id, address to) external; // require status != Retired
-function retireCredit(uint256 id, string calldata reason) external; // require status != Retired, one-way
-function getCredit(uint256 id) external view returns (Credit memory);
-```
-
-**Key invariant to test explicitly:** `retireCredit` must revert if called twice on the same ID, and `transferCredit` must revert on an already-retired credit. That single test case is the double-counting-prevention proof for the demo/judges.
-
-**Vatsal's deliverables:**
-- [ ] Hardhat project, contract above, full test suite (issue/transfer/retire/double-retire-reverts/role-gating)
-- [ ] Deploy script → **local Hardhat node** (`http://127.0.0.1:8545`, same as the earlier repo) — no testnet/faucet dependency, fully reproducible for judges from the repo alone
-- [ ] Publish ABI + deployed address into `docs/contract-abi.json` + `docs/deployed-address.txt` for Kavan to consume
-- [ ] Document the exact `npx hardhat node` + deploy-script sequence in `blockchain/README.md` so Kavan (and judges) can spin it up in one command
-- [ ] **Owner: Vatsal** (it's a chain-reading script, lives in `blockchain/scripts/listen.ts`) — polls/subscribes to the local Hardhat node for `CreditIssued`/`CreditTransferred`/`CreditRetired` events and POSTs to Kavan's `/carbon-credits/sync` endpoint. Kavan just needs that endpoint to exist and accept the event payload — doesn't need to touch chain code.
+Map component (leaflet+leaflet-draw, or maplibre-gl+draw plugin) stays a standalone reusable component parametrized by mode (`register` | `extend`) — no change.
 
 ---
 
-## 4. ML — owner: Vatsal
+## 4. Backend split
 
-Two scoped features, pick primary now, treat the second as stretch:
+### 4a. Next.js Server Actions / Route Handlers (owner: Kavan) — everything except ML inference
 
-**Primary — vegetation cover verification.** Project owner uploads site photos at registration/monitoring intervals. Model estimates vegetation/canopy cover % (mangrove/seagrass presence) as supporting evidence for the verifier — it assists, it does not auto-approve. Simple approach: a pretrained segmentation/classification model (or Roboflow-hosted model if reusing the existing API key) fine-tuned or zero-shot on coastal vegetation imagery.
+Prefer **server actions** for anything called from a form/mutation inside the app (this is what the starter's form patterns expect); use **route handlers** (`app/api/.../route.ts`) only where you need a stable HTTP endpoint for something *outside* Next.js — the public `/verify` page's data fetch (fine as a server component instead, actually), and Vatsal's chain-event listener callback.
 
-**Stretch — measurement anomaly detection.** Statistical (z-score/IQR) or lightweight Isolation Forest over `measurements` time-series per device to flag physically implausible readings (e.g. salinity spike with no tide event) before they feed into credit calculations.
-
-**Output contract (`ml_reports` — frozen schema both sides code against):**
-```json
-{
-  "project_id": "uuid",
-  "source_images": ["url1", "url2"],
-  "vegetation_cover_pct": 0.0,
-  "estimated_biomass": 0.0,
-  "anomaly_flags": [{"measurement_id": "uuid", "reason": "string"}],
-  "model_version": "v1",
-  "confidence": 0.0
-}
-```
-
-**Vatsal's deliverables:**
-- [ ] `ml/` service (FastAPI or a plain script Kavan's backend calls) exposing `POST /predict` matching the schema above
-- [ ] Sample/labeled dataset or pretrained-model choice documented in `ml/README.md`
-- [ ] Backend just needs to `POST` an image set and receive the JSON — no ML code lives in `backend/`
-
----
-
-## 5. Phase plan (parallel tracks)
-
-| Phase | Kavan (FE + BE) | Vatsal (Blockchain + ML) |
+| Area | Implementation | Notes |
 |---|---|---|
-| **0 — Setup** (Day 0–1) | FastAPI skeleton, SQLite + Alembic, JWT auth (register/login/refresh/me), shadcn app shell + auth pages | Hardhat project + skeleton contract (roles only), `ml/` repo skeleton + dataset/model choice decided |
-| **1 — Core domain** (Day 1–3) | `projects`, `project_users` models + CRUD + registration wizard wired end-to-end; project list/detail pages in shadcn | Full `CarbonCreditRegistry.sol` (issue/transfer/retire/roles) + test suite; deploy to local Hardhat node; ABI published to `docs/` |
-| **2 — Data capture + verification** (Day 3–5) | `iot_devices`, `measurements` models + ingestion endpoint; verifier approval UI + `/projects/{id}/status`; dashboard of pending reviews | ML v1 working `/predict`; wire into `/ml/verify-project/{id}` contract (Kavan calls it, Vatsal owns the model behind it); anomaly detection stretch if time |
-| **3 — Issuance + marketplace** (Day 5–7) | `carbon_credits`, `transactions` models; `/carbon-credits/sync` endpoint; wallet connect (wagmi/ethers) + buy/retire UI calling the contract directly from frontend | Event listener syncing chain → `/carbon-credits/sync`; gas/cost sanity pass; contract security review (reentrancy, access control) |
-| **4 — Public trust layer + polish** (Day 7–8) | Public no-auth `/verify/{id}` page — this is the single best demo screen for judges; encrypt sensitive project fields at rest (legal docs, org contact) | ML report visuals for the verifier UI; final on-chain demo script (issue → sell → retire → verify) rehearsed against the local node for presentation |
+| Auth | Clerk (built-in) | role stored in `publicMetadata`, mirrored to `User.role` via a Clerk webhook route handler (`/api/webhooks/clerk`) on `user.created`/`user.updated` |
+| Generator profile | server action `updateGeneratorProfile()` | rejects locked fields once `locked=true` |
+| Buyer profile | server action `updateBuyerProfile()` | |
+| Parcel create | server action `createParcel()` | writes `LandParcel` DRAFT, computes `totalAreaHa` server-side from geofence |
+| Parcel estimate trigger | server action `runEstimate(parcelId \| extensionId)` | `fetch()`s the FastAPI `/predict` endpoint, applies threshold logic, writes `CarbonEstimate` + updates parcel/extension status + creates `ReviewRequest` if needed |
+| Re-request | server action `reRequestReview()` | only from `REJECTED`, re-triggers `runEstimate` |
+| Extension | server action `createExtension()` | |
+| Review queue | server actions `listReviewQueue()` / `resolveReview()` | role-gated to APPROVER/ADMIN |
+| Credits read | server components fetching directly via Prisma | public parcel/credit pages |
+| Credits sync from chain | route handler `POST /api/carbon-credits/sync` | Vatsal's `blockchain/scripts/listen.ts` posts here after on-chain event — plain HTTP callback, both sides TS, no cross-language auth glue needed |
+| Purchase flow | server action `createPurchaseRequest()`, `confirmPurchase()` | wallet tx confirmed client-side (wagmi/ethers), tx hash passed to `confirmPurchase()` which writes `Transaction` + updates `CarbonCredit.status` |
+| Admin CRUD | server actions per entity, or the starter's existing data-table + form pattern wired to Prisma | reuse template scaffolding directly |
+| Public verify | server component, direct Prisma read by `creditId` or `txHash` | no route handler needed |
+
+### 4b. FastAPI ML microservice (owner: Vatsal) — unchanged scope, narrower role
+
+Only exposes prediction endpoints. No database, no auth beyond a shared service key if you want to gate it from public internet during the demo.
+
+```
+POST /predict/drone      { images: string[], ecosystemType } -> { estimatedCredits, vegetationCoverPct, estimatedBiomass, confidence, modelVersion }
+POST /predict/satellite  { images: string[], parcelId, priorEstimate } -> same shape
+```
+
+Kavan's `runEstimate()` server action calls whichever endpoint fits, gets JSON back, does the threshold math and DB writes in TS. This is the same I/O contract as v1's `ml_reports` schema, just consumed from TS instead of FastAPI.
 
 ---
 
-## 6. Explicit scope cuts
-- Real IoT hardware — simulated sensor payloads with realistic mangrove/seagrass ranges
-- Public testnet/mainnet deployment — local Hardhat node only (same as the earlier repo); avoids faucet/RPC flakiness during the demo
-- Full computer-vision training pipeline — use a pretrained/hosted model, don't train from scratch under time pressure
+## 5. next-shadcn-dashboard-starter — what to keep vs. strip (revised)
 
-## 7. Definition of done
-Register project (Kavan's FE/BE) → ML report attached (Vatsal) → verifier approves → credit issued on-chain (Vatsal's contract, synced by Kavan's backend) → buyer purchases → buyer retires → public `/verify/{id}` page shows full history. That loop, live, is the whole submission — and it's the point where both tracks meet.
+**Keep everything, including Clerk** — this is the whole point of the switch. No Day-0 auth surgery.
+
+**Keep:**
+- Clerk auth end-to-end (middleware, sign-in/up pages, `useUser`/`auth()` helpers)
+- App shell, sidebar, theme, breadcrumbs
+- `data-table` (tanstack table) → repoint columns at Prisma-backed entities
+- Form patterns (react-hook-form + zod) → reuse for profile/parcel/review forms
+- Chart components (recharts) → admin analytics
+- Server action conventions if the starter already has any example mutations — mirror that pattern for your own
+
+**Add (not in starter by default):**
+- Prisma + SQLite: `schema.prisma` from §2, `npx prisma migrate dev`
+- Clerk webhook route handler to mirror `User.role` into your DB
+- `requireRole()` helper for server-action-level authorization (Clerk handles page auth, but role-gating within a shared layout needs its own check)
+- Map component (leaflet/maplibre) — not part of the starter, net-new
+
+**Strip:**
+- Kanban board demo — unrelated, delete route + components
+- "Product" CRUD demo (faker-backed) — delete once you've copied its data-table pattern for a real entity
+- Any demo-only routes outside your screens list
+
+Quick pass over the current repo tree before deleting anything — template internals shift between pulls, verify against what you actually have.
+
+---
+
+## 6. Phase plan (parallel tracks)
+
+| Phase | Kavan (Next.js: FE + all app backend) | Vatsal (Blockchain + ML) |
+|---|---|---|
+| **0 — Setup** (Day 0–1) | Fork starter, keep Clerk, add role picker to signup + webhook to mirror role into DB, Prisma schema + migrate, role-aware sidebar | Confirm contract on local Hardhat (mostly done); finalize `/predict/drone` + `/predict/satellite` I/O |
+| **1 — Generator core** (Day 1–3) | `GeneratorProfile` + `LandParcel` server actions, map draw component (register mode), parcel list/detail | Drone model wired to `/predict/drone`, output matches `CarbonEstimate` shape |
+| **2 — Decision engine + review** (Day 3–5) | `runEstimate()` threshold logic, `ReviewRequest` + Approver queue UI, re-request flow, extension flow (map extend mode) | Satellite model wired to `/predict/satellite` |
+| **3 — Buyer + issuance** (Day 5–7) | `BuyerProfile`, purchase flow, wallet connect, `CarbonCredit`/`Transaction` writes, `/api/carbon-credits/sync` route handler | Chain event listener (`listen.ts`) → posts to sync route; gas sanity pass |
+| **4 — Admin + public trust layer + polish** (Day 7–8) | Admin CRUD tables, analytics dashboard, public `/verify/[id]` page | Final on-chain demo script rehearsed: register → estimate → approve → issue → buy → retire → verify |
+
+---
+
+## 7. Explicit scope cuts (unchanged + auth note)
+- Real IoT hardware / sensor time-series — cut
+- Multi-user collaboration per parcel — one generator per parcel
+- Public testnet/mainnet — local Hardhat node only
+- Full CV training pipeline — pretrained/hosted models behind FastAPI
+- Marketplace order-matching — flat list + direct purchase
+- Custom auth/JWT — cut in favor of Clerk (this revision's main change)
+- Forgot-password — Clerk gives you this for free, no extra work needed
+
+## 8. Definition of done
+Generator registers parcel with geofence + drone estimate → auto-approved or Approver clears it → credit issued on-chain → chain listener syncs to `/api/carbon-credits/sync` → buyer purchases with ETH → buyer retires → public `/verify/[id]` shows full history including which decision path it took. Extension path (satellite growth claim) run once, live, as the second demo beat.
