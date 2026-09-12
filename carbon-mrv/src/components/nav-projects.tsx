@@ -60,7 +60,7 @@ export function NavProjects({
               >
                 <DropdownMenuGroup>
                   <DropdownMenuItem>
-                    <Icons.workspace className='text-muted-foreground mr-2 h-4 w-4' />
+                    <Icons.page className='text-muted-foreground mr-2 h-4 w-4' />
                     <span>View Project</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
