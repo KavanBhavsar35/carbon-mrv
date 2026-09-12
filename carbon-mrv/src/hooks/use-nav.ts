@@ -26,9 +26,22 @@ import type { NavItem, NavGroup } from '@/types';
  * @param items - Array of navigation items to filter
  * @returns Filtered items
  */
+import { useState, useEffect } from 'react';
+
 export function useFilteredNavItems(items: NavItem[]) {
   const { organization, membership } = useOrganization();
   const { user } = useUser();
+  const [activeRole, setActiveRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const updateRole = () => {
+      const saved = localStorage.getItem('active_app_role');
+      setActiveRole(saved);
+    };
+    updateRole();
+    window.addEventListener('role_changed', updateRole);
+    return () => window.removeEventListener('role_changed', updateRole);
+  }, []);
 
   // Memoize context and permissions
   const accessContext = useMemo(() => {
@@ -41,10 +54,9 @@ export function useFilteredNavItems(items: NavItem[]) {
       permissions: permissions as string[],
       role: role ?? undefined,
       hasOrg: !!organization,
-      appRole: user?.publicMetadata?.role as string | undefined
+      appRole: activeRole || (user?.publicMetadata?.role as string | undefined) || 'GENERATOR'
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable primitives to avoid infinite re-renders from unstable Clerk object refs
-  }, [organization?.id, user?.id, membership?.permissions, membership?.role]);
+  }, [organization?.id, user?.id, membership?.permissions, membership?.role, activeRole]);
 
   // Filter items synchronously (all client-side)
   const filteredItems = useMemo(() => {
@@ -81,7 +93,7 @@ export function useFilteredNavItems(items: NavItem[]) {
         }
 
         // Check appRole
-        if (item.access.appRole) {
+        if (item.access.appRole && accessContext.appRole !== 'ADMIN') {
           if (accessContext.appRole !== item.access.appRole) {
             return false;
           }
@@ -141,7 +153,7 @@ export function useFilteredNavItems(items: NavItem[]) {
             }
 
             // Check appRole
-            if (childItem.access.appRole) {
+            if (childItem.access.appRole && accessContext.appRole !== 'ADMIN') {
               if (accessContext.appRole !== childItem.access.appRole) {
                 return false;
               }

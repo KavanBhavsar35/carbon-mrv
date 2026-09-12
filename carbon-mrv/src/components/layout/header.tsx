@@ -6,6 +6,8 @@ import SearchInput from '../search-input';
 import { ThemeSelector } from '../themes/theme-selector';
 import { ThemeModeToggle } from '../themes/theme-mode-toggle';
 
+import RoleSwitcher from './role-switcher';
+
 export default function Header() {
   return (
     <header className='bg-background/60 sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-2 backdrop-blur-md md:h-14'>
@@ -16,6 +18,7 @@ export default function Header() {
       </div>
 
       <div className='flex items-center gap-2 px-4'>
+        <RoleSwitcher />
         <div className='hidden md:flex'>
           <SearchInput />
         </div>

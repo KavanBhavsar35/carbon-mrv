@@ -22,7 +22,7 @@ export function actionClient<TInput, TOutput>(
         return { success: false, error: 'Unauthorized' };
       }
 
-      const userRole = sessionClaims?.metadata?.role as Role | undefined;
+      const userRole = (sessionClaims as any)?.metadata?.role as Role | undefined;
 
       if (allowedRoles && allowedRoles.length > 0) {
         if (!userRole || !allowedRoles.includes(userRole)) {
