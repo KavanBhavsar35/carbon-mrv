@@ -39,3 +39,11 @@ script.js
 .agents/
 .opencode/
 data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Local SQLite database
+*.db
