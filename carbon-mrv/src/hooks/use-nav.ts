@@ -54,7 +54,7 @@ export function useFilteredNavItems(items: NavItem[]) {
       permissions: permissions as string[],
       role: role ?? undefined,
       hasOrg: !!organization,
-      appRole: activeRole || (user?.publicMetadata?.role as string | undefined) || 'GENERATOR'
+      appRole: activeRole || (user?.publicMetadata?.role as string | undefined) || null
     };
   }, [organization?.id, user?.id, membership?.permissions, membership?.role, activeRole]);
 
@@ -93,8 +93,9 @@ export function useFilteredNavItems(items: NavItem[]) {
         }
 
         // Check appRole
-        if (item.access.appRole && accessContext.appRole !== 'ADMIN') {
-          if (accessContext.appRole !== item.access.appRole) {
+        if (item.access.appRole) {
+          if (!accessContext.appRole) return false; // no role yet
+          if (accessContext.appRole !== 'ADMIN' && accessContext.appRole !== item.access.appRole) {
             return false;
           }
         }
@@ -153,8 +154,9 @@ export function useFilteredNavItems(items: NavItem[]) {
             }
 
             // Check appRole
-            if (childItem.access.appRole && accessContext.appRole !== 'ADMIN') {
-              if (accessContext.appRole !== childItem.access.appRole) {
+            if (childItem.access.appRole) {
+              if (!accessContext.appRole) return false; // no role yet
+              if (accessContext.appRole !== 'ADMIN' && accessContext.appRole !== childItem.access.appRole) {
                 return false;
               }
             }

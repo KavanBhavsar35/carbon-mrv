@@ -1,27 +1,39 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import PageContainer from '@/components/layout/page-container';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import PageContainer from '@/components/layout/page-container';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  ShoppingCart,
+  Leaf,
+  TrendingUp,
+  Wallet,
+  ExternalLink,
+  Loader2,
+  CircleDollarSign,
+  ShieldCheck,
+  BarChart3
+} from 'lucide-react';
+import { getAvailableCreditsAction, purchaseCreditAction } from '@/features/buyer/actions/buyer-actions';
+import { toast } from 'sonner';
 
 export default function MarketplacePage() {
   const [credits, setCredits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   const fetchCredits = async () => {
-    try {
-      const res = await fetch('/api/demo');
-      const data = await res.json();
-      if (data.success) {
-        setCredits(data.credits || []);
-      }
-    } catch (err) {
-      console.error('Failed to load marketplace:', err);
-    } finally {
-      setLoading(false);
+    const res = await getAvailableCreditsAction();
+    if (res.success) {
+      setCredits(res.data ?? []);
+    } else {
+      toast.error(res.error || 'Failed to load marketplace');
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -30,166 +42,205 @@ export default function MarketplacePage() {
 
   const handlePurchase = async (creditId: string) => {
     setPurchasingId(creditId);
-    setMessage(null);
-
-    try {
-      const res = await fetch('/api/demo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'buy_credit',
-          creditId,
-          buyerWallet: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Purchase failed');
-
-      setMessage(`Credit purchased successfully! On-chain custody transferred. Tx: ${data.txHash.substring(0, 18)}...`);
+    const res = await purchaseCreditAction(creditId);
+    if (res.success) {
+      toast.success(`Credit purchased! Tx: ${res.data?.txHash?.substring(0, 18)}...`);
       await fetchCredits();
-    } catch (err: any) {
-      setMessage(`Purchase failed: ${err.message}`);
-    } finally {
-      setPurchasingId(null);
+    } else {
+      toast.error(res.error || 'Purchase failed');
     }
+    setPurchasingId(null);
   };
+
+  const totalVolume = credits.reduce((acc, c) => acc + (c.amount || 0), 0);
+  const avgPrice = 35;
 
   return (
     <PageContainer>
-      <div className="space-y-6 pb-12">
+      <div className='space-y-6 animate-in fade-in-50 duration-300'>
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5'>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">💼</span>
-              <h1 className="text-2xl font-bold tracking-tight">Verified Blue Carbon Marketplace</h1>
+            <div className='flex items-center gap-2'>
+              <Badge variant='outline' className='bg-blue-500/10 text-blue-600 border-blue-500/30 text-xs font-semibold'>
+                Buyer Dashboard
+              </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Browse and acquire on-chain tokenized carbon credits with verified PyTorch UAV canopy allometry.
+            <h1 className='text-2xl font-bold tracking-tight text-foreground mt-1'>
+              Blue Carbon Marketplace
+            </h1>
+            <p className='text-sm text-muted-foreground mt-1'>
+              Browse and acquire verified on-chain tokenized carbon credits with PyTorch UAV canopy allometry.
             </p>
           </div>
-          <Link
-            href="/dashboard/buyer/holdings"
-            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-sm w-fit transition flex items-center gap-1.5"
-          >
-            <span>👛</span> View My Holdings
+          <Link href='/dashboard/buyer/holdings'>
+            <Button variant='outline' className='gap-2'>
+              <Wallet className='h-4 w-4' />
+              My Holdings
+            </Button>
           </Link>
         </div>
 
-        {message && (
-          <div className="p-4 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 text-xs font-medium">
-            {message}
-          </div>
-        )}
-
-        {/* Marketplace Grid */}
-        {loading ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <div className="animate-spin text-2xl mb-2">🔄</div>
-            Loading marketplace credits...
-          </div>
-        ) : credits.length === 0 ? (
-          <div className="bg-card border rounded-2xl p-12 text-center space-y-2">
-            <div className="text-3xl">🌱</div>
-            <h3 className="font-bold text-lg">No Credits Listed Yet</h3>
-            <p className="text-sm text-muted-foreground">
-              Once an Approver audits and approves submitted parcels, tokenized credits will appear here for purchase.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {credits.map((credit) => (
-              <div
-                key={credit.id}
-                className="bg-card border rounded-2xl p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between space-y-5"
-              >
-                <div>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                        Token #{credit.onchainCreditId}
-                      </span>
-                      <h3 className="font-bold text-base text-foreground mt-2">
-                        {credit.parcel?.parcelName || 'Blue Carbon Conservation Reserve'}
-                      </h3>
-                    </div>
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        credit.status === 'RETIRED'
-                          ? 'bg-neutral-800 text-neutral-400'
-                          : credit.status === 'SOLD'
-                          ? 'bg-blue-500/15 text-blue-500 border border-blue-500/30'
-                          : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                      }`}
-                    >
-                      {credit.status}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t text-xs">
-                    <div>
-                      <span className="text-muted-foreground block">Vintage:</span>
-                      <span className="font-bold text-foreground">{credit.vintage}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block">Rating:</span>
-                      <span className="font-bold text-amber-500">AAA (Sylvera)</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block">Volume:</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                        {credit.amount} tCO2e
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block">Price:</span>
-                      <span className="font-bold text-foreground text-sm">$35.00 / t</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 text-[11px] text-muted-foreground font-mono truncate">
-                    EVM Tx: {credit.blockchainTxHash}
-                  </div>
+        {/* Summary Metrics */}
+        <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
+          <Card className='border shadow-xs'>
+            <CardContent className='p-4'>
+              <div className='flex items-center gap-3'>
+                <div className='p-2.5 rounded-lg bg-emerald-500/10 text-emerald-600'>
+                  <Leaf className='h-5 w-5' />
                 </div>
-
-                <div className="pt-3 border-t flex items-center justify-between gap-3">
-                  <Link
-                    href={`/verify/${credit.onchainCreditId}`}
-                    className="px-3 py-2 rounded-xl border text-xs font-medium hover:bg-muted transition"
-                  >
-                    View Audit
-                  </Link>
-
-                  {credit.status === 'ISSUED' ? (
-                    <button
-                      onClick={() => handlePurchase(credit.id)}
-                      disabled={purchasingId === credit.id}
-                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition disabled:opacity-50 flex items-center gap-1 shadow"
-                    >
-                      {purchasingId === credit.id ? (
-                        <>
-                          <span className="animate-spin">🔄</span> Processing...
-                        </>
-                      ) : (
-                        <>
-                          <span>💳</span> Purchase (${(credit.amount * 35).toLocaleString()})
-                        </>
-                      )}
-                    </button>
-                  ) : credit.status === 'SOLD' ? (
-                    <Link
-                      href="/dashboard/buyer/holdings"
-                      className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs"
-                    >
-                      Retire Token →
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">Permanently Retired</span>
-                  )}
+                <div>
+                  <div className='text-xs text-muted-foreground font-medium'>Available Credits</div>
+                  <div className='text-xl font-bold'>{loading ? '...' : credits.length}</div>
                 </div>
               </div>
-            ))}
+            </CardContent>
+          </Card>
+
+          <Card className='border shadow-xs'>
+            <CardContent className='p-4'>
+              <div className='flex items-center gap-3'>
+                <div className='p-2.5 rounded-lg bg-blue-500/10 text-blue-600'>
+                  <BarChart3 className='h-5 w-5' />
+                </div>
+                <div>
+                  <div className='text-xs text-muted-foreground font-medium'>Total Volume</div>
+                  <div className='text-xl font-bold'>{loading ? '...' : `${totalVolume.toFixed(1)} tCO2e`}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='border shadow-xs'>
+            <CardContent className='p-4'>
+              <div className='flex items-center gap-3'>
+                <div className='p-2.5 rounded-lg bg-amber-500/10 text-amber-600'>
+                  <CircleDollarSign className='h-5 w-5' />
+                </div>
+                <div>
+                  <div className='text-xs text-muted-foreground font-medium'>Price / tCO2e</div>
+                  <div className='text-xl font-bold'>${avgPrice}.00</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='border shadow-xs'>
+            <CardContent className='p-4'>
+              <div className='flex items-center gap-3'>
+                <div className='p-2.5 rounded-lg bg-purple-500/10 text-purple-600'>
+                  <ShieldCheck className='h-5 w-5' />
+                </div>
+                <div>
+                  <div className='text-xs text-muted-foreground font-medium'>Rating</div>
+                  <div className='text-xl font-bold text-amber-500'>AAA</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Credits Grid */}
+        {loading ? (
+          <div className='flex flex-col items-center justify-center h-64 border rounded-xl bg-card'>
+            <Loader2 className='h-8 w-8 animate-spin text-emerald-600 mb-2' />
+            <p className='text-sm text-muted-foreground'>Loading marketplace credits...</p>
+          </div>
+        ) : credits.length === 0 ? (
+          <Card className='border-dashed shadow-none'>
+            <CardContent className='flex flex-col items-center justify-center py-16 text-center'>
+              <div className='p-4 rounded-full bg-emerald-500/10 text-emerald-600 mb-4'>
+                <Leaf className='h-10 w-10' />
+              </div>
+              <h3 className='text-lg font-semibold'>No Credits Listed Yet</h3>
+              <p className='text-sm text-muted-foreground max-w-md mt-1'>
+                Once an Approver audits and approves submitted parcels, tokenized credits will appear here for purchase.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'>
+            {credits.map((credit) => {
+              const estimate = credit.parcel?.estimates?.[0];
+              return (
+                <Card key={credit.id} className='border shadow-xs hover:border-blue-500/40 transition-all flex flex-col justify-between'>
+                  <CardHeader className='pb-3'>
+                    <div className='flex items-start justify-between gap-2'>
+                      <div>
+                        <span className='text-xs font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground'>
+                          Token #{credit.onchainCreditId}
+                        </span>
+                        <CardTitle className='text-base font-semibold mt-2'>
+                          {credit.parcel?.parcelName || 'Blue Carbon Conservation Reserve'}
+                        </CardTitle>
+                        <CardDescription className='capitalize text-xs mt-0.5'>
+                          {credit.parcel?.ecosystemType?.replace('_', ' ').toLowerCase() || 'mangrove'}
+                        </CardDescription>
+                      </div>
+                      <Badge variant='outline' className='bg-emerald-500/10 text-emerald-600 border-emerald-500/30 shrink-0'>
+                        ISSUED
+                      </Badge>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className='space-y-4 pt-0'>
+                    <div className='grid grid-cols-2 gap-2 text-xs py-2 border-y bg-muted/30 -mx-6 px-6'>
+                      <div>
+                        <span className='text-muted-foreground'>Volume:</span>
+                        <div className='font-semibold text-emerald-600'>{credit.amount} tCO2e</div>
+                      </div>
+                      <div>
+                        <span className='text-muted-foreground'>Vintage:</span>
+                        <div className='font-semibold'>{credit.vintage}</div>
+                      </div>
+                      <div>
+                        <span className='text-muted-foreground'>Price:</span>
+                        <div className='font-semibold'>${(credit.amount * 35).toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <span className='text-muted-foreground'>Rating:</span>
+                        <div className='font-semibold text-amber-500'>AAA (Sylvera)</div>
+                      </div>
+                    </div>
+
+                    {estimate && (
+                      <div className='bg-blue-50/70 dark:bg-blue-950/20 p-2.5 rounded-md border border-blue-200/50 text-xs'>
+                        <div className='font-medium text-blue-700 dark:text-blue-400 flex items-center justify-between'>
+                          <span>ML Canopy Estimate</span>
+                          <span>{estimate.estimatedCredits?.toFixed(1)} tCO2e</span>
+                        </div>
+                        <div className='text-[11px] text-muted-foreground mt-0.5 flex gap-3'>
+                          <span>Cover: {estimate.vegetationCoverPct?.toFixed(1)}%</span>
+                          <span>Conf: {((estimate.confidence || 0) * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className='flex items-center justify-between gap-2 pt-1'>
+                      <Link href={`/verify/${credit.onchainCreditId}`}>
+                        <Button variant='ghost' size='sm' className='h-8 gap-1 text-xs'>
+                          <ExternalLink className='h-3.5 w-3.5' />
+                          Verify
+                        </Button>
+                      </Link>
+                      <Button
+                        size='sm'
+                        className='gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs'
+                        onClick={() => handlePurchase(credit.id)}
+                        disabled={purchasingId === credit.id}
+                      >
+                        {purchasingId === credit.id ? (
+                          <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                        ) : (
+                          <ShoppingCart className='h-3.5 w-3.5' />
+                        )}
+                        Purchase
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>

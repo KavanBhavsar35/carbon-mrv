@@ -3,23 +3,22 @@
 import React, { useState, useEffect } from 'react';
 import PageContainer from '@/components/layout/page-container';
 import Link from 'next/link';
+import { getAllCreditsAction } from '@/features/buyer/actions/buyer-actions';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AdminCreditsPage() {
   const [credits, setCredits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchCredits = async () => {
-    try {
-      const res = await fetch('/api/demo');
-      const data = await res.json();
-      if (data.success) {
-        setCredits(data.credits || []);
-      }
-    } catch (err) {
-      console.error('Failed to load admin credits:', err);
-    } finally {
-      setLoading(false);
+    const res = await getAllCreditsAction();
+    if (res.success) {
+      setCredits(res.data ?? []);
+    } else {
+      toast.error(res.error || 'Failed to load credits');
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -40,7 +39,10 @@ export default function AdminCreditsPage() {
         </div>
 
         {loading ? (
-          <div className="p-12 text-center text-muted-foreground">Loading credit inventory...</div>
+          <div className='flex flex-col items-center justify-center h-64 border rounded-xl bg-card'>
+            <Loader2 className='h-8 w-8 animate-spin text-primary mb-2' />
+            <p className='text-sm text-muted-foreground'>Loading credit inventory...</p>
+          </div>
         ) : credits.length === 0 ? (
           <div className="bg-card border rounded-2xl p-12 text-center space-y-2">
             <div className="text-3xl">🌱</div>

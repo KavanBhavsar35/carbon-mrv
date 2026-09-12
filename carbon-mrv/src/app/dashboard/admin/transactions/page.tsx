@@ -2,23 +2,22 @@
 
 import React, { useState, useEffect } from 'react';
 import PageContainer from '@/components/layout/page-container';
+import { getAllTransactionsAction } from '@/features/buyer/actions/buyer-actions';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AdminTransactionsPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTransactions = async () => {
-    try {
-      const res = await fetch('/api/demo');
-      const data = await res.json();
-      if (data.success) {
-        setTransactions(data.transactions || []);
-      }
-    } catch (err) {
-      console.error('Failed to load transactions:', err);
-    } finally {
-      setLoading(false);
+    const res = await getAllTransactionsAction();
+    if (res.success) {
+      setTransactions(res.data ?? []);
+    } else {
+      toast.error(res.error || 'Failed to load transactions');
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -39,7 +38,10 @@ export default function AdminTransactionsPage() {
         </div>
 
         {loading ? (
-          <div className="p-12 text-center text-muted-foreground">Loading transaction ledger...</div>
+          <div className='flex flex-col items-center justify-center h-64 border rounded-xl bg-card'>
+            <Loader2 className='h-8 w-8 animate-spin text-primary mb-2' />
+            <p className='text-sm text-muted-foreground'>Loading transaction ledger...</p>
+          </div>
         ) : transactions.length === 0 ? (
           <div className="bg-card border rounded-2xl p-12 text-center space-y-2">
             <h3 className="font-bold text-lg">No Transactions Logged Yet</h3>

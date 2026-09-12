@@ -1,6 +1,8 @@
 'use client';
 
 import * as React from 'react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +18,18 @@ interface RegistrationResultProps {
 
 export function RegistrationResult({ role, profile, onReset: _onReset }: RegistrationResultProps) {
   const isGenerator = role === 'GENERATOR';
+  const router = useRouter();
+
+  // Auto-redirect to role-specific dashboard after 4 seconds
+  useEffect(() => {
+    const destination = isGenerator
+      ? '/dashboard/generator/parcels'
+      : '/dashboard/buyer/marketplace';
+    const timer = setTimeout(() => {
+      router.push(destination);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [isGenerator, router]);
 
   return (
     <div className='w-full max-w-3xl mx-auto space-y-8 animate-in zoom-in-95 fade-in-50 duration-500'>
@@ -53,7 +67,7 @@ export function RegistrationResult({ role, profile, onReset: _onReset }: Registr
             isGenerator ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-blue-500 to-indigo-400'
           )}
         />
-        <CardHeader className='pb-3'>
+        <CardHeader className='px-6 pt-6 pb-4'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-2.5'>
               <div
@@ -80,7 +94,7 @@ export function RegistrationResult({ role, profile, onReset: _onReset }: Registr
           </div>
         </CardHeader>
 
-        <CardContent className='space-y-4 pt-2 text-sm'>
+        <CardContent className='space-y-4 px-6 pb-4 text-sm'>
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/40 p-4 rounded-xl border'>
             {isGenerator ? (
               <>
@@ -154,7 +168,7 @@ export function RegistrationResult({ role, profile, onReset: _onReset }: Registr
           </div>
         </CardContent>
 
-        <CardFooter className='flex flex-col sm:flex-row gap-3 pt-2 bg-muted/20 border-t'>
+        <CardFooter className='flex flex-col sm:flex-row gap-3 px-6 py-5 bg-muted/20 border-t'>
           {isGenerator ? (
             <>
               <Link
@@ -200,6 +214,10 @@ export function RegistrationResult({ role, profile, onReset: _onReset }: Registr
           )}
         </CardFooter>
       </Card>
+      {/* Auto-redirect notice */}
+      <p className='text-center text-xs text-muted-foreground animate-pulse'>
+        Redirecting you to your dashboard in 4 seconds...
+      </p>
     </div>
   );
 }
