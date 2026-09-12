@@ -1,12 +1,24 @@
 import PageContainer from '@/components/layout/page-container';
+import { OnboardingWizard } from '@/features/onboarding';
+import { getRegistrationStatusAction } from '@/features/onboarding/actions/onboarding-actions';
+import { Metadata } from 'next';
 
-export default function OnboardingPage() {
+export const metadata: Metadata = {
+  title: 'Generator Registration | Carbon MRV',
+  description: 'Register and update your Carbon Generator profile.'
+};
+
+export default async function GeneratorOnboardingPage() {
+  const statusRes = await getRegistrationStatusAction();
+  const statusData = statusRes.success ? statusRes.data : undefined;
+
   return (
     <PageContainer>
-      <div className='flex flex-1 flex-col items-center justify-center h-[calc(100vh-10rem)]'>
-        <h2 className='text-2xl font-bold tracking-tight'>Coming soon</h2>
-        <p className='text-muted-foreground'>This page is under construction.</p>
-      </div>
+      <OnboardingWizard
+        initialRole='GENERATOR'
+        initialProfile={statusData?.generatorProfile}
+        isAlreadyOnboarded={!!statusData?.generatorProfile}
+      />
     </PageContainer>
   );
 }

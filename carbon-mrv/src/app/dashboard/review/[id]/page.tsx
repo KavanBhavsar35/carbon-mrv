@@ -1,602 +1,387 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
-import PageContainer from '@/components/layout/page-container';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import * as React from 'react';
+import { useEffect, useState, useTransition } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { LoadingButton } from '@/components/ui/loading-button';
+import { 
+  ArrowLeft, 
+  CheckCircle2, 
+  UploadCloud, 
+  Trees, 
+  MapPin, 
+  Loader2, 
+  Sparkles, 
+  XCircle, 
+  Clock,
+  ShieldCheck,
+  AlertCircle
+} from 'lucide-react';
+import { 
+  getReviewDetailAction, 
+  uploadEvidenceAndEstimateAction,
+  submitReviewDecisionAction 
+} from '@/features/review/actions/review-actions';
+import { MapDraw } from '@/features/parcels/components/map-draw';
+import { toast } from 'sonner';
 
-export default function AuditParcelPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ReviewDetailPage() {
   const router = useRouter();
-  const { id } = use(params);
-
+  const params = useParams();
+  const parcelId = params.id as string;
+  
   const [parcel, setParcel] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [mlLoading, setMlLoading] = useState(false);
-  const [auditLoading, setAuditLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [evidenceImages, setEvidenceImages] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [comments, setComments] = useState('');
+  const [isPending, startTransition] = useTransition();
 
-  // ML State (Supports any number of uploaded UAV survey tiles)
-  const [droneImages, setDroneImages] = useState<string[]>([]);
-  const [urlInput, setUrlInput] = useState<string>('');
-  const [showPreview, setShowPreview] = useState<boolean>(true);
-  const [mlResult, setMlResult] = useState<any>(null);
-  const [auditComments, setAuditComments] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
-
-  // Load parcel
-  const fetchParcel = async () => {
+  const fetchParcel = React.useCallback(async () => {
     try {
-      const res = await fetch('/api/parcels');
-      const data = await res.json();
-      if (data.success) {
-        const found = (data.parcels || []).find((p: any) => p.id === id);
-        setParcel(found);
-        if (found?.estimates?.length > 0) {
-          const latestEstimate = found.estimates[found.estimates.length - 1];
-          setMlResult({
-            vegetationCoverPct: latestEstimate.vegetationCoverPct,
-            estimatedBiomass: latestEstimate.estimatedBiomass,
-            estimatedCredits: latestEstimate.estimatedCredits,
-            additionalityRating: 'AAA',
-            bufferPoolCredits: (latestEstimate.estimatedCredits * 0.15).toFixed(2),
-            netTradableCredits: (latestEstimate.estimatedCredits * 0.85).toFixed(2),
-            riskLevel: latestEstimate.deltaPct > 25 ? 'HIGH' : 'LOW',
-            anomalyScore: latestEstimate.deltaPct > 25 ? 0.78 : 0.05,
-            modelVersion: latestEstimate.modelVersion,
-            tilesProcessed: 6
-          });
-        }
+      const res = await getReviewDetailAction(parcelId);
+      if (res.success && res.data) {
+        setParcel(res.data);
+      } else {
+        toast.error(res.error || 'Failed to load parcel');
+        router.push('/dashboard/review/queue');
       }
-    } catch (err) {
-      console.error('Failed to load parcel:', err);
+    } catch (err: any) {
+      toast.error('Unexpected error loading parcel');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, [parcelId, router]);
 
   useEffect(() => {
     fetchParcel();
-  }, [id]);
+  }, [fetchParcel]);
 
-  // Handle uploading any number of images from local PC
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
-    const fileList = Array.from(files);
-    const readPromises = fileList.map((file) => {
-      return new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          if (ev.target?.result) resolve(ev.target.result as string);
-        };
-        reader.readAsDataURL(file);
-      });
-    });
-
-    Promise.all(readPromises).then((base64Strings) => {
-      setDroneImages((prev) => [...prev, ...base64Strings]);
-      setShowPreview(true);
-      setMessage(`Added ${base64Strings.length} survey image${base64Strings.length > 1 ? 's' : ''} to audit queue.`);
-    });
-    // Reset file input value to allow re-uploading the same files if needed
-    e.target.value = '';
+    
+    setIsUploading(true);
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setEvidenceImages(prev => [...prev, base64]);
+      setIsUploading(false);
+      toast.success('Image uploaded successfully');
+    };
+    reader.onerror = () => {
+      setIsUploading(false);
+      toast.error('Failed to read image');
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Add image by URL
-  const handleAddUrl = () => {
-    if (!urlInput.trim()) return;
-    setDroneImages((prev) => [...prev, urlInput.trim()]);
-    setUrlInput('');
-    setShowPreview(true);
-  };
-
-  // Remove individual image
-  const handleRemoveImage = (indexToRemove: number) => {
-    setDroneImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-  };
-
-  // Run ML Model on all uploaded survey images
-  const handleRunMl = async () => {
-    if (droneImages.length === 0) {
-      setMessage('Please upload or select at least one UAV drone survey image before running AI verification.');
+  const handleRunEstimate = () => {
+    if (evidenceImages.length === 0) {
+      toast.error('Please upload at least one evidence image');
       return;
     }
 
-    setMlLoading(true);
-    setMessage(null);
-
-    try {
-      const res = await fetch('/api/demo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'create_parcel_and_estimate',
-          parcelName: parcel?.parcelName || 'Audited Mangrove Plot',
-          ecosystemType: parcel?.ecosystemType || 'MANGROVE',
-          areaHa: parcel?.totalAreaHa || 15.0,
-          claimedCredits: parcel?.claimedCredits || 120.0,
-          source: 'DRONE',
-          images: droneImages
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'ML prediction failed');
-
-      setMlResult(data.mlOutput);
-      setMessage(`PyTorch Mangrove U-Net successfully analyzed all ${droneImages.length} aerial flight survey images in parallel batch!`);
-    } catch (err: any) {
-      console.error('ML inference error:', err);
-      setMessage(`ML Inference Error: ${err.message || 'Check ML service connection'}`);
-    } finally {
-      setMlLoading(false);
-    }
-  };
-
-  // Submit Audit Decision
-  const handleDecision = async (decision: 'APPROVED' | 'REJECTED') => {
-    setAuditLoading(true);
-    setMessage(null);
-
-    try {
-      const reviewId = parcel?.reviewRequests?.[0]?.id || `rev-${Date.now()}`;
-      const res = await fetch('/api/demo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'review_decision',
-          reviewId,
-          parcelId: id,
-          decision,
-          comments: auditComments || (decision === 'APPROVED' ? 'Approved by Auditor.' : 'Rejected.')
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to submit decision');
-
-      if (decision === 'APPROVED') {
-        setMessage(`Claim APPROVED! Token #${data.credit?.onchainCreditId || '101'} minted on-chain.`);
-      } else {
-        setMessage('Claim REJECTED. Parcel marked as rejected.');
+    startTransition(async () => {
+      try {
+        const res = await uploadEvidenceAndEstimateAction(parcelId, evidenceImages);
+        if (res.success && res.data) {
+          toast.success(`ML Estimate complete! Delta: ${res.data.deltaPct.toFixed(1)}%`);
+          await fetchParcel();
+        } else {
+          toast.error(res.error || 'Failed to run estimate');
+        }
+      } catch (err: any) {
+        toast.error(err?.message || 'Unexpected error running estimate');
       }
-
-      await fetchParcel();
-      setTimeout(() => {
-        router.push('/dashboard/review/queue');
-      }, 1500);
-    } catch (err: any) {
-      setMessage(`Audit error: ${err.message}`);
-    } finally {
-      setAuditLoading(false);
-    }
+    });
   };
 
-  if (loading) {
+  const handleDecision = (decision: 'APPROVED' | 'REJECTED') => {
+    const reviewRequest = parcel?.reviewRequests?.[0];
+
+    startTransition(async () => {
+      try {
+        const res = await submitReviewDecisionAction({
+          parcelId,
+          reviewRequestId: reviewRequest?.id,
+          decision,
+          comments,
+        });
+
+        if (res.success) {
+          toast.success(`Parcel successfully ${decision.toLowerCase()}!`);
+          router.push('/dashboard/review/queue');
+        } else {
+          toast.error(res.error || 'Failed to record decision');
+        }
+      } catch (err: any) {
+        toast.error(err?.message || 'Error recording decision');
+      }
+    });
+  };
+
+  if (isLoading) {
     return (
-      <PageContainer>
-        <div className="p-12 text-center text-muted-foreground">Loading audit console...</div>
-      </PageContainer>
+      <div className='flex flex-col justify-center items-center h-64 gap-2'>
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <p className="text-xs text-muted-foreground">Loading parcel review data...</p>
+      </div>
     );
   }
 
-  if (!parcel) {
-    return (
-      <PageContainer>
-        <div className="bg-card border rounded-2xl p-12 text-center space-y-3">
-          <h3 className="font-bold text-lg">Parcel Not Found</h3>
-          <Link href="/dashboard/review/queue" className="text-xs text-indigo-500 underline">
-            Return to Review Queue
-          </Link>
-        </div>
-      </PageContainer>
-    );
-  }
+  if (!parcel) return null;
 
-  const deltaPct = mlResult
-    ? (((parcel.claimedCredits - mlResult.estimatedCredits) / mlResult.estimatedCredits) * 100).toFixed(1)
-    : '0.0';
+  const latestEstimate = parcel.estimates?.[0];
+  const isFinalized = parcel.status === 'ACTIVE' || parcel.status === 'REJECTED';
 
   return (
-    <PageContainer>
-      <div className="max-w-5xl mx-auto space-y-6 pb-12">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🛡️</span>
-              <h1 className="text-2xl font-bold tracking-tight">Audit Console: {parcel.parcelName}</h1>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Verify generator claim against high-resolution drone UAV canopy segmentation and biomass models.
-            </p>
-          </div>
-          <Link
-            href="/dashboard/review/queue"
-            className="px-3 py-1.5 rounded-lg border text-xs font-medium hover:bg-muted transition"
+    <div className='w-full max-w-5xl mx-auto space-y-6 animate-in fade-in-50 duration-300 py-6 px-4 md:px-8'>
+      {/* Header */}
+      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5'>
+        <div className='flex items-center gap-3'>
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon'
+            onClick={() => router.push('/dashboard/review/queue')}
+            className='h-9 w-9 rounded-lg border shrink-0'
           >
-            ← Back to Queue
-          </Link>
-        </div>
-
-        {message && (
-          <div className="p-4 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 text-xs font-medium">
-            {message}
-          </div>
-        )}
-
-        {/* Claim Summary Card */}
-        <div className="bg-card border rounded-2xl p-6 shadow-sm">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-            Generator Application Metadata
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-xs text-muted-foreground block">Ecosystem:</span>
-              <span className="font-bold text-foreground">{parcel.ecosystemType}</span>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block">Conservation Area:</span>
-              <span className="font-bold text-foreground">{parcel.totalAreaHa} Hectares</span>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block">Claimed Volume:</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                {parcel.claimedCredits} tCO2e
-              </span>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block">Status:</span>
-              <span
-                className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                  parcel.status === 'APPROVED'
-                    ? 'bg-emerald-950/60 text-emerald-400'
-                    : parcel.status === 'REJECTED'
-                    ? 'bg-red-950/60 text-red-400'
-                    : 'bg-amber-950/60 text-amber-400'
-                }`}
-              >
+            <ArrowLeft className='h-4 w-4' />
+          </Button>
+          <div>
+            <div className='flex items-center gap-2'>
+              <Badge variant='outline' className='bg-blue-500/10 text-blue-600 border-blue-500/30 text-xs font-semibold'>
+                Approver Verification
+              </Badge>
+              <Badge variant='outline' className={
+                parcel.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
+                parcel.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-600 border-rose-500/30' :
+                'bg-amber-500/10 text-amber-600 border-amber-500/30'
+              }>
                 {parcel.status}
-              </span>
+              </Badge>
             </div>
-          </div>
-        </div>
-
-        {/* Drone Image & ML Inference Workspace */}
-        <div className="bg-card border rounded-2xl p-6 shadow-sm space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                <span>📸</span> Drone UAV Evidence & AI Analysis
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Upload multispectral or RGB drone orthomosaic imagery captured over the geofenced coordinates.
-              </p>
-            </div>
-            <button
-              onClick={handleRunMl}
-              disabled={mlLoading}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition disabled:opacity-50 flex items-center gap-1.5 shadow"
-            >
-              {mlLoading ? (
-                <>
-                  <span className="animate-spin">🔄</span> Running PyTorch Model...
-                </>
-              ) : (
-                <>
-                  <span>🤖</span> Run AI ML Verification
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* UAV Drone Survey Imagery Upload & Batch Management */}
-          <div className="p-4 rounded-xl bg-muted/40 border space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <label className="block text-xs font-semibold text-foreground">
-                  UAV Drone Flight Survey Evidence ({droneImages.length} Image{droneImages.length === 1 ? '' : 's'} Selected)
-                </label>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Upload multiple orthomosaic sector tiles or photos covering the entire parcel boundary.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {droneImages.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDroneImages([]);
-                      setMessage('Cleared all uploaded survey images.');
-                    }}
-                    className="px-2.5 py-1 rounded-lg border text-xs text-red-500 hover:bg-red-500/10 font-medium transition"
-                  >
-                    🗑️ Clear All
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowPreview(!showPreview)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                    showPreview
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-background border text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <span>👁️</span> {showPreview ? 'Hide Preview' : `Preview (${droneImages.length})`}
-                </button>
-              </div>
-            </div>
-
-            {/* URL Input & Multi-File Upload */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-              <div className="md:col-span-3 flex gap-2">
-                <input
-                  type="text"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddUrl();
-                    }
-                  }}
-                  placeholder="Paste image URL or Base64 and click Add..."
-                  className="flex-1 bg-background border rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddUrl}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold whitespace-nowrap transition"
-                >
-                  + Add URL
-                </button>
-              </div>
-
-              {/* Multi-File Upload Button */}
-              <label className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border bg-background hover:bg-muted text-xs font-semibold cursor-pointer transition shadow-xs">
-                <span>📁</span> Upload Images (Select Any)
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
-
-            {/* Quick Sample Presets */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[11px] text-muted-foreground font-medium mr-1">Quick Add Presets:</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDroneImages((prev) => [...prev, '/samples/mangrove_tile_1.png']);
-                    setShowPreview(true);
-                  }}
-                  className="px-2 py-1 rounded bg-background hover:bg-muted border text-[11px] text-emerald-600 dark:text-emerald-400 font-medium transition"
-                >
-                  + 🌱 Dense Canopy
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDroneImages((prev) => [...prev, '/samples/mangrove_tile_2.png']);
-                    setShowPreview(true);
-                  }}
-                  className="px-2 py-1 rounded bg-background hover:bg-muted border text-[11px] text-cyan-600 dark:text-cyan-400 font-medium transition"
-                >
-                  + 🌊 Tidal Creek
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDroneImages((prev) => [...prev, '/samples/mangrove_tile_3.png']);
-                    setShowPreview(true);
-                  }}
-                  className="px-2 py-1 rounded bg-background hover:bg-muted border text-[11px] text-teal-600 dark:text-teal-400 font-medium transition"
-                >
-                  + 🌿 Forest Margin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDroneImages([
-                      '/samples/mangrove_tile_1.png',
-                      '/samples/mangrove_tile_2.png',
-                      '/samples/mangrove_tile_3.png',
-                      '/samples/mangrove_tile_1.png',
-                      '/samples/mangrove_tile_2.png',
-                      '/samples/mangrove_tile_3.png'
-                    ]);
-                    setShowPreview(true);
-                    setMessage('Loaded 6 high-resolution drone orthomosaic survey tiles across the parcel.');
-                  }}
-                  className="px-2 py-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-[11px] text-indigo-400 font-semibold transition"
-                >
-                  ⚡ Load 6 Sector Survey
-                </button>
-              </div>
-
-              <span className="text-[11px] text-muted-foreground font-mono">
-                {droneImages.length} tile{droneImages.length === 1 ? '' : 's'} queued for PyTorch batch
-              </span>
-            </div>
-
-            {/* Visual Image Preview Panel */}
-            {showPreview && (
-              <div className="mt-3 p-4 rounded-xl bg-background border space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${droneImages.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                    <span className="text-xs font-bold text-foreground">
-                      UAV Orthomosaic Survey Preview ({droneImages.length} Image{droneImages.length === 1 ? '' : 's'})
-                    </span>
-                  </div>
-                  {droneImages.length > 0 && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                      Ready for Batch Inference
-                    </span>
-                  )}
-                </div>
-
-                {droneImages.length === 0 ? (
-                  <div className="py-10 text-center space-y-2 bg-muted/20 rounded-xl border border-dashed p-6">
-                    <div className="text-3xl">🚁</div>
-                    <div className="text-xs font-semibold text-foreground">No Survey Images Uploaded Yet</div>
-                    <p className="text-[11px] text-muted-foreground max-w-md mx-auto">
-                      Select multiple images at once using <strong>"Upload Images"</strong>, add image URLs, or click <strong>"Load 6 Sector Survey"</strong> to test multi-tile drone processing.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[460px] overflow-y-auto p-1">
-                    {droneImages.map((imgSrc, i) => (
-                      <div
-                        key={i}
-                        className="group relative border rounded-xl overflow-hidden bg-muted/30 flex flex-col shadow-xs"
-                      >
-                        <div className="relative aspect-square w-full bg-neutral-900 flex items-center justify-center overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={imgSrc}
-                            alt={`Survey Sector ${i + 1}`}
-                            className="h-full w-full object-cover group-hover:scale-105 transition duration-300"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/samples/mangrove_tile_1.png';
-                            }}
-                          />
-                          <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/75 text-[10px] font-mono text-emerald-300 backdrop-blur-xs">
-                            Sector #{i + 1}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(i)}
-                            title="Remove this image"
-                            className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-xs opacity-80 group-hover:opacity-100 transition shadow-sm"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <div className="p-2 text-[10px] bg-card border-t flex items-center justify-between">
-                          <span className="font-semibold text-foreground truncate">
-                            Tile {i + 1}
-                          </span>
-                          <span className="text-muted-foreground font-mono">256×256</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {droneImages.length > 0 && (
-                  <div className="text-[11px] text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between font-mono pt-2 border-t gap-1">
-                    <span>PyTorch Batch Tensor: [{droneImages.length}, 3, 256, 256]</span>
-                    <span className="text-indigo-400">
-                      Multi-tile parallel allometry enabled
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ML Results Panel */}
-          {mlResult && (
-            <div className="space-y-4 pt-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                AI MRV Verified Biophysical Baseline
-              </h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-xl bg-muted/40 border">
-                  <div className="text-xs text-muted-foreground">Canopy Cover %</div>
-                  <div className="text-xl font-bold text-emerald-500 mt-1">
-                    {mlResult.vegetationCoverPct}%
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">U-Net Segmentation</div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-muted/40 border">
-                  <div className="text-xs text-muted-foreground">Biomass Density</div>
-                  <div className="text-xl font-bold text-cyan-500 mt-1">
-                    {mlResult.estimatedBiomass}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">t/ha allometric</div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-muted/40 border">
-                  <div className="text-xs text-muted-foreground">AI Verified Credits</div>
-                  <div className="text-xl font-bold text-teal-400 mt-1">
-                    {mlResult.estimatedCredits}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">tCO2e baseline</div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-muted/40 border">
-                  <div className="text-xs text-muted-foreground">Sylvera Rating</div>
-                  <div className="text-xl font-bold text-amber-500 mt-1">
-                    {mlResult.additionalityRating || 'AAA'}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">Quality Benchmark</div>
-                </div>
-              </div>
-
-              {/* Comparison & Anomaly Callout */}
-              <div
-                className={`p-4 rounded-xl border flex items-center justify-between ${
-                  parseFloat(deltaPct) > 25
-                    ? 'bg-destructive/10 border-destructive text-destructive'
-                    : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-                }`}
-              >
-                <div>
-                  <div className="font-bold text-sm">
-                    {parseFloat(deltaPct) > 25 ? '⚠️ High-Risk Over-Reporting Detected' : '✅ Verified Within Biological Tolerance'}
-                  </div>
-                  <div className="text-xs mt-0.5">
-                    Claimed: {parcel.claimedCredits} tCO2e vs AI Actual: {mlResult.estimatedCredits} tCO2e (Discrepancy: {deltaPct}%)
-                  </div>
-                </div>
-                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-background border">
-                  Risk: {mlResult.riskLevel}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Audit Action Section */}
-          <div className="pt-4 border-t space-y-3">
-            <label className="block text-xs font-semibold text-muted-foreground">
-              Auditor Verification Comments
-            </label>
-            <textarea
-              rows={2}
-              value={auditComments}
-              onChange={(e) => setAuditComments(e.target.value)}
-              placeholder="e.g. Canopy density confirmed via PyTorch drone U-Net inference. Allometric equations verified."
-              className="w-full bg-background border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => handleDecision('APPROVED')}
-                disabled={auditLoading || !mlResult}
-                className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition disabled:opacity-50 flex items-center justify-center gap-1.5 shadow"
-              >
-                <span>✅</span> Approve Claim & Mint On-Chain (Hardhat)
-              </button>
-              <button
-                onClick={() => handleDecision('REJECTED')}
-                disabled={auditLoading}
-                className="px-6 py-3 rounded-xl bg-red-950/60 hover:bg-red-900/80 border border-red-800 text-red-300 font-semibold text-xs transition disabled:opacity-50"
-              >
-                <span>❌</span> Reject Claim
-              </button>
-            </div>
+            <h2 className='text-2xl font-bold tracking-tight text-foreground mt-1'>
+              {parcel.parcelName}
+            </h2>
           </div>
         </div>
       </div>
-    </PageContainer>
+
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+        {/* Left Column: Details & Map */}
+        <div className='md:col-span-2 space-y-6'>
+          <Card className='border shadow-xs'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-2'>
+                <Trees className='h-5 w-5 text-blue-600' />
+                <CardTitle className='text-lg'>Parcel Information</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className='grid grid-cols-2 gap-4 text-sm'>
+                <div>
+                  <div className='text-muted-foreground mb-1'>Generator</div>
+                  <div className='font-medium'>{parcel.generator?.contactPerson || 'N/A'}</div>
+                  <div className='text-xs text-muted-foreground mt-0.5'>{parcel.generator?.organizationName || 'Individual'}</div>
+                </div>
+                <div>
+                  <div className='text-muted-foreground mb-1'>Ecosystem</div>
+                  <div className='font-medium capitalize'>{parcel.ecosystemType.replace('_', ' ').toLowerCase()}</div>
+                </div>
+                <div>
+                  <div className='text-muted-foreground mb-1'>Calculated Area</div>
+                  <div className='font-medium font-mono'>{parcel.totalAreaHa.toFixed(2)} ha</div>
+                </div>
+                <div>
+                  <div className='text-muted-foreground mb-1'>Claimed Credits</div>
+                  <div className='font-medium font-mono text-emerald-600'>{parcel.claimedCredits} tCO2e</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='border shadow-xs'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-2'>
+                <MapPin className='h-5 w-5 text-blue-600' />
+                <CardTitle className='text-lg'>Geofence Boundary</CardTitle>
+              </div>
+              <CardDescription>Visual geofence verified from generator submission.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MapDraw readOnly={true} initialGeojson={parcel.geofence} />
+            </CardContent>
+          </Card>
+
+          {/* ML Estimate Result Card */}
+          {latestEstimate && (
+            <Card className='border shadow-xs border-blue-300 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/10'>
+              <CardHeader className='pb-3'>
+                <div className='flex items-center gap-2'>
+                  <Sparkles className='h-5 w-5 text-blue-600' />
+                  <CardTitle className='text-lg'>MRV Drone Biometric Analysis</CardTitle>
+                </div>
+                <CardDescription>AI prediction result comparing drone imagery against claimed credits.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs'>
+                  <div className='p-3 bg-background rounded-lg border'>
+                    <span className='text-muted-foreground'>ML Estimate</span>
+                    <div className='text-base font-bold text-blue-600 mt-0.5 font-mono'>
+                      {latestEstimate.estimatedCredits.toFixed(1)} tCO2e
+                    </div>
+                  </div>
+                  <div className='p-3 bg-background rounded-lg border'>
+                    <span className='text-muted-foreground'>Variance Delta</span>
+                    <div className={`text-base font-bold mt-0.5 font-mono ${latestEstimate.deltaPct > 20 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {latestEstimate.deltaPct.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div className='p-3 bg-background rounded-lg border'>
+                    <span className='text-muted-foreground'>Vegetation Cover</span>
+                    <div className='text-base font-bold mt-0.5 font-mono'>
+                      {latestEstimate.vegetationCoverPct?.toFixed(1) || 'N/A'}%
+                    </div>
+                  </div>
+                  <div className='p-3 bg-background rounded-lg border'>
+                    <span className='text-muted-foreground'>Confidence</span>
+                    <div className='text-base font-bold text-emerald-600 mt-0.5 font-mono'>
+                      {(latestEstimate.confidence * 100).toFixed(0)}%
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right Column: Evidence & Action */}
+        <div className='space-y-6'>
+          {/* Drone Evidence Upload */}
+          <Card className='border shadow-xs'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-2'>
+                <UploadCloud className='h-5 w-5 text-blue-600' />
+                <CardTitle className='text-lg'>Drone Evidence</CardTitle>
+              </div>
+              <CardDescription>
+                Upload survey imagery to run the MRV computer vision model.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='space-y-2'>
+                <Label htmlFor='evidence-upload'>Upload Image</Label>
+                <Input 
+                  id='evidence-upload' 
+                  type='file' 
+                  accept='image/*' 
+                  onChange={handleImageUpload}
+                  disabled={isUploading || isPending}
+                />
+              </div>
+
+              {evidenceImages.length > 0 && (
+                <div className='space-y-2 mt-4'>
+                  <Label>Survey Previews ({evidenceImages.length})</Label>
+                  <div className='grid grid-cols-2 gap-2'>
+                    {evidenceImages.map((img, i) => (
+                      <div key={i} className='aspect-square relative rounded-md overflow-hidden border'>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img} alt={`Evidence ${i}`} className='object-cover w-full h-full' />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <LoadingButton
+                onClick={handleRunEstimate}
+                loading={isPending}
+                disabled={evidenceImages.length === 0 || isUploading}
+                className='w-full gap-2 bg-blue-600 hover:bg-blue-700 text-white'
+              >
+                <Sparkles className='h-4 w-4' />
+                <span>Run Drone Estimate</span>
+              </LoadingButton>
+            </CardContent>
+          </Card>
+
+          {/* Final Human Determination (Approver Decision) */}
+          <Card className='border shadow-xs border-emerald-500/20'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-2'>
+                <ShieldCheck className='h-5 w-5 text-emerald-600' />
+                <CardTitle className='text-lg'>Approver Determination</CardTitle>
+              </div>
+              <CardDescription>
+                Final human verification decision. No automatic approval.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              {isFinalized ? (
+                <div className='p-3.5 rounded-lg bg-muted border text-xs flex items-center gap-2.5'>
+                  {parcel.status === 'ACTIVE' ? (
+                    <>
+                      <CheckCircle2 className='h-4 w-4 text-emerald-600 shrink-0' />
+                      <span>This parcel has been <strong>Approved</strong> and activated.</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className='h-4 w-4 text-rose-600 shrink-0' />
+                      <span>This parcel has been <strong>Rejected</strong>.</span>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className='space-y-2'>
+                    <Label htmlFor='decision-comments'>Review Comments (Optional)</Label>
+                    <Textarea
+                      id='decision-comments'
+                      placeholder='Add notes on perimeter, vegetation density, or audit rationale...'
+                      value={comments}
+                      onChange={(e) => setComments(e.target.value)}
+                      rows={3}
+                      className='text-xs'
+                    />
+                  </div>
+
+                  <div className='flex flex-col gap-2 pt-2'>
+                    <LoadingButton
+                      onClick={() => handleDecision('APPROVED')}
+                      loading={isPending}
+                      className='w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold'
+                    >
+                      <CheckCircle2 className='h-4 w-4' />
+                      <span>Approve Parcel & Issue Credits</span>
+                    </LoadingButton>
+
+                    <Button
+                      type='button'
+                      variant='outline'
+                      disabled={isPending}
+                      onClick={() => handleDecision('REJECTED')}
+                      className='w-full gap-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 border-rose-200'
+                    >
+                      <XCircle className='h-4 w-4' />
+                      <span>Reject Parcel</span>
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 }

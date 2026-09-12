@@ -1,113 +1,194 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import PageContainer from '@/components/layout/page-container';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import PageContainer from '@/components/layout/page-container';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { 
+  MapPin, 
+  Trees, 
+  Clock, 
+  CheckCircle2, 
+  XCircle, 
+  ArrowUpRight, 
+  Loader2,
+  Layers,
+  Shield
+} from 'lucide-react';
+import { getAllParcelsAction } from '@/features/parcels/actions/parcel-actions';
+import { toast } from 'sonner';
 
-export default function AdminParcelsPage() {
+export default function AdminAllParcelsPage() {
   const [parcels, setParcels] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchParcels = async () => {
-    try {
-      const res = await fetch('/api/parcels');
-      const data = await res.json();
-      if (data.success) {
-        setParcels(data.parcels || []);
+  useEffect(() => {
+    async function loadAll() {
+      try {
+        const res = await getAllParcelsAction();
+        if (res.success && res.data) {
+          setParcels(res.data);
+        } else {
+          toast.error(res.error || 'Failed to load parcels');
+        }
+      } catch (err: any) {
+        toast.error('Error loading parcels');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Failed to load admin parcels:', err);
-    } finally {
-      setLoading(false);
+    }
+    loadAll();
+  }, []);
+
+  const totalArea = parcels.reduce((acc, p) => acc + (p.totalAreaHa || 0), 0);
+  const totalClaimedCredits = parcels.reduce((acc, p) => acc + (p.claimedCredits || 0), 0);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'PENDING_REVIEW':
+        return (
+          <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 gap-1">
+            <Clock className="h-3 w-3" />
+            Pending Review
+          </Badge>
+        );
+      case 'ACTIVE':
+        return (
+          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            Active & Verified
+          </Badge>
+        );
+      case 'REJECTED':
+        return (
+          <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/30 gap-1">
+            <XCircle className="h-3 w-3" />
+            Rejected
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
-  useEffect(() => {
-    fetchParcels();
-  }, []);
-
   return (
     <PageContainer>
-      <div className="space-y-6 pb-12">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">⚡</span>
-            <h1 className="text-2xl font-bold tracking-tight">Admin: Master Land Parcel Registry</h1>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Global administrative supervision of all registered blue carbon plots, generator submissions, and audit statuses.
-          </p>
-        </div>
-
-        {loading ? (
-          <div className="p-12 text-center text-muted-foreground">Loading registry...</div>
-        ) : parcels.length === 0 ? (
-          <div className="bg-card border rounded-2xl p-12 text-center space-y-2">
-            <div className="text-3xl">🌾</div>
-            <h3 className="font-bold text-lg">No Land Parcels Registered Yet</h3>
-            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-              When generators submit mangrove parcels for verification, they will be tracked and audited here.
+      <div className="space-y-6 animate-in fade-in-50 duration-300">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-xs font-semibold">
+                Administration
+              </Badge>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground mt-1">
+              All Registered Parcels
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              System-wide registry of all mapped parcels, owners, biometrics, and verification statuses.
             </p>
           </div>
+        </div>
+
+        {/* Overview Metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="border shadow-xs">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-600">
+                <MapPin className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground font-medium">Total Registered Parcels</div>
+                <div className="text-xl font-bold">{isLoading ? '...' : parcels.length}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border shadow-xs">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-600">
+                <Layers className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground font-medium">Total Measured Area</div>
+                <div className="text-xl font-bold">{isLoading ? '...' : `${totalArea.toFixed(2)} ha`}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border shadow-xs">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-600">
+                <Trees className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground font-medium">Claimed Carbon Sequestration</div>
+                <div className="text-xl font-bold">{isLoading ? '...' : `${totalClaimedCredits} tCO2e`}</div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Parcels Table / Grid */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center h-64 border rounded-xl bg-card">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-2" />
+            <p className="text-sm text-muted-foreground">Loading registry...</p>
+          </div>
+        ) : parcels.length === 0 ? (
+          <Card className="border-dashed shadow-none">
+            <CardContent className="py-16 text-center text-muted-foreground">
+              No parcels registered in the system yet.
+            </CardContent>
+          </Card>
         ) : (
-          <div className="bg-card border rounded-2xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-muted/50 border-b text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-6 py-3.5 font-semibold">Parcel Name</th>
-                    <th className="px-6 py-3.5 font-semibold">Generator</th>
-                    <th className="px-6 py-3.5 font-semibold">Ecosystem</th>
-                    <th className="px-6 py-3.5 font-semibold">Area (Ha)</th>
-                    <th className="px-6 py-3.5 font-semibold">Claimed</th>
-                    <th className="px-6 py-3.5 font-semibold">Status</th>
-                    <th className="px-6 py-3.5 font-semibold text-right">Audit</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {parcels.map((parcel) => (
-                    <tr key={parcel.id} className="hover:bg-muted/30 transition">
-                      <td className="px-6 py-4 font-semibold text-foreground">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {parcels.map((parcel) => (
+              <Card key={parcel.id} className="border shadow-xs hover:border-blue-500/40 transition-all flex flex-col justify-between">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <CardTitle className="text-base font-semibold truncate">
                         {parcel.parcelName}
-                      </td>
-                      <td className="px-6 py-4 text-xs text-muted-foreground">
-                        {parcel.generator?.organizationName || 'Coastal Trust'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-2 py-0.5 rounded text-xs bg-emerald-950/40 text-emerald-400 border border-emerald-800/40 font-medium">
-                          {parcel.ecosystemType}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs">{parcel.totalAreaHa} ha</td>
-                      <td className="px-6 py-4 font-mono text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                        {parcel.claimedCredits} tCO2e
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                            parcel.status === 'APPROVED'
-                              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                              : parcel.status === 'REJECTED'
-                              ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
-                              : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                          }`}
-                        >
-                          {parcel.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <Link
-                          href={`/dashboard/review/${parcel.id}`}
-                          className="px-3 py-1.5 rounded-lg border text-xs font-medium hover:bg-muted text-indigo-500 transition"
-                        >
-                          Inspect Console →
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </CardTitle>
+                      <CardDescription className="capitalize text-xs mt-0.5">
+                        {parcel.ecosystemType.replace('_', ' ').toLowerCase()} · {parcel.generator?.contactPerson || 'Unknown Generator'}
+                      </CardDescription>
+                    </div>
+                    {getStatusBadge(parcel.status)}
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 pt-0">
+                  <div className="grid grid-cols-2 gap-2 text-xs py-2 border-y bg-muted/30 -mx-6 px-6">
+                    <div>
+                      <span className="text-muted-foreground">Area:</span>
+                      <div className="font-semibold">{parcel.totalAreaHa.toFixed(2)} ha</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Claimed:</span>
+                      <div className="font-semibold">{parcel.claimedCredits} tCO2e</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      {new Date(parcel.createdAt).toLocaleDateString()}
+                    </span>
+                    <Link href={`/dashboard/review/${parcel.id}`}>
+                      <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10">
+                        <span>Review / Details</span>
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>
