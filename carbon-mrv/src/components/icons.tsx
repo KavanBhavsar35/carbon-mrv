@@ -74,7 +74,16 @@ import {
   IconStack2,
   IconStar,
   IconSun,
+  IconSlice,
   IconTrash,
+  IconMapPin,
+  IconBuildingStore,
+  IconWallet,
+  IconList,
+  IconChecklist,
+  IconMap,
+  IconActivity,
+  IconChartBar,
   IconTrendingDown,
   IconTrendingUp,
   IconTypography,
@@ -89,6 +98,8 @@ import {
   IconCrown,
   IconX
 } from '@tabler/icons-react';
+
+import { Hand } from 'lucide-react';
 
 export type Icon = React.ComponentType<IconProps>;
 
@@ -109,6 +120,7 @@ export const Icons = {
   help: IconHelpCircle,
   info: IconInfoCircle,
   spinner: IconLoader2,
+  hand: Hand,
   search: IconSearch,
   settings: IconSettings,
   trash: IconTrash,
@@ -185,7 +197,6 @@ export const Icons = {
 
   // Commerce / Plans
   billing: IconCreditCard,
-  creditCard: IconCreditCard,
   product: IconBox,
   pro: IconCrown,
   exclusive: IconStar,
@@ -214,7 +225,16 @@ export const Icons = {
 
   // Misc
   pizza: IconPizza,
-  workspace: IconFolder,
+  mapPin: IconMapPin,
+  store: IconBuildingStore,
+  wallet: IconWallet,
+  list: IconList,
+  checkCircle: IconChecklist,
+  map: IconMap,
+  creditCard: IconCreditCard,
+  activity: IconActivity,
+  chart: IconChartBar,
+  plus: IconPlus,
   forms: IconClipboardText,
   slash: IconSlash,
   calendar: IconCalendar,

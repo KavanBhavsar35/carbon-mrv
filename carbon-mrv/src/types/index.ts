@@ -6,6 +6,7 @@ export interface PermissionCheck {
   feature?: string;
   role?: string;
   requireOrg?: boolean;
+  appRole?: 'ADMIN' | 'APPROVER' | 'GENERATOR' | 'BUYER';
 }
 
 export interface NavItem {

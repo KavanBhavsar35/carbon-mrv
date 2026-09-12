@@ -1,0 +1,183 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums (Simulated in SQLite as Strings, but Prisma schema supports enum keyword in other DBs.
+// Since SQLite doesn't natively support enums, Prisma will enforce these values at the application level.)
+// Actually SQLite doesn't support enums in Prisma schema natively unless configured or using strings. 
+// Wait, Prisma doesn't support enums for SQLite provider. 
+// I will just use String and validate at the app level or use native types if switching to Postgres.
+// Wait, the docs say: "Prisma does not support enums for SQLite." So I will define them as String.
+
+model User {
+  id              String            @id @default(cuid())
+  clerkId         String            @unique
+  email           String            @unique
+  name            String
+  phone           String?
+  role            String            // ADMIN, APPROVER, GENERATOR, BUYER
+  walletAddress   String?           @unique
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  generatorProfile GeneratorProfile?
+  buyerProfile     BuyerProfile?
+}
+
+model GeneratorProfile {
+  id                        String      @id @default(cuid())
+  userId                    String      @unique
+  user                      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entityType                String      // INDIVIDUAL, NGO, PANCHAYAT, COMMUNITY, COMPANY
+  organizationName          String?
+  contactPerson             String
+  contactPhone              String
+  state                     String
+  district                  String
+  village                   String
+  registrationNumber        String?
+  hasLegalPermits           Boolean     @default(false)
+  hasSurveyReport           Boolean     @default(false)
+  hasEnvironmentalClearance Boolean     @default(false)
+  locked                    Boolean     @default(false)
+  
+  parcels                   LandParcel[]
+}
+
+model BuyerProfile {
+  id                   String      @id @default(cuid())
+  userId               String      @unique
+  user                 User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buyerType            String      // INDIVIDUAL, COMPANY
+  companyName          String?
+  industry             String?
+  annualEmissionsTco2e Float?
+  wantedCredits        Float
+  
+  purchaseRequests     PurchaseRequest[]
+}
+
+model LandParcel {
+  id                 String              @id @default(cuid())
+  generatorId        String
+  generator          GeneratorProfile    @relation(fields: [generatorId], references: [id])
+  parcelName         String
+  ecosystemType      String              // MANGROVE, SEAGRASS, SALT_MARSH, CORAL_REEF, KELP_FOREST
+  geofence           String              // Storing JSON string for SQLite
+  totalAreaHa        Float
+  claimedCredits     Float
+  contractAddress    String?
+  tokenId            String?
+  status             String              // DRAFT, PENDING_ESTIMATE, PENDING_REVIEW, APPROVED, REJECTED
+  totalCreditsIssued Float               @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  
+  extensions         ParcelExtension[]
+  estimates          CarbonEstimate[]
+  reviewRequests     ReviewRequest[]
+  credits            CarbonCredit[]
+}
+
+model ParcelExtension {
+  id                 String              @id @default(cuid())
+  parcelId           String
+  parcel             LandParcel          @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  additionalGeofence String?             // Storing JSON string for SQLite
+  claimedCredits     Float
+  status             String              // PENDING_ESTIMATE, PENDING_REVIEW, APPROVED, REJECTED
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  
+  estimates          CarbonEstimate[]
+  reviewRequests     ReviewRequest[]
+}
+
+model CarbonEstimate {
+  id                 String              @id @default(cuid())
+  parcelId           String
+  parcel             LandParcel          @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  extensionId        String?
+  extension          ParcelExtension?    @relation(fields: [extensionId], references: [id])
+  source             String              // DRONE, SATELLITE
+  sourceImages       String              // JSON array string
+  estimatedCredits   Float
+  vegetationCoverPct Float
+  estimatedBiomass   Float
+  confidence         Float
+  modelVersion       String
+  deltaPct           Float
+  decision           String              // AUTO_APPROVED, PENDING_REVIEW, AUTO_REJECTED
+  createdAt          DateTime            @default(now())
+  
+  reviewRequests     ReviewRequest[]
+}
+
+model ReviewRequest {
+  id                 String              @id @default(cuid())
+  parcelId           String
+  parcel             LandParcel          @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  extensionId        String?
+  extension          ParcelExtension?    @relation(fields: [extensionId], references: [id])
+  estimateId         String
+  estimate           CarbonEstimate      @relation(fields: [estimateId], references: [id])
+  isRerequest        Boolean             @default(false)
+  flaggedReason      String?
+  status             String              // PENDING, APPROVED, REJECTED
+  reviewedById       String?
+  comments           String?
+  reviewedAt         DateTime?
+  createdAt          DateTime            @default(now())
+}
+
+model CarbonCredit {
+  id                 String              @id @default(cuid())
+  parcelId           String
+  parcel             LandParcel          @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  onchainCreditId    String              @unique // BigInt can be tricky with JSON, use String
+  amount             Float
+  vintage            Int
+  status             String              // ISSUED, SOLD, RETIRED
+  blockchainTxHash   String              @unique
+  ownerWalletAddress String
+  mintedAt           DateTime            @default(now())
+  retiredAt          DateTime?
+  retiredReason      String?
+}
+
+model PurchaseRequest {
+  id                 String              @id @default(cuid())
+  buyerId            String
+  buyer              BuyerProfile        @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  requestedAmount    Float
+  maxPricePerCredit  Float?
+  status             String              // OPEN, MATCHED, FULFILLED, CANCELLED
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model Transaction {
+  id                 String              @id @default(cuid())
+  type               String              // MINT, TRANSFER, PURCHASE, RETIRE
+  fromUserId         String?             // Null for MINT
+  toUserId           String?             // Null for RETIRE
+  parcelId           String?
+  creditId           String?
+  amount             Float
+  pricePerCredit     Float?
+  totalPrice         Float?
+  currency           String              @default("ETH")
+  txHash             String              @unique
+  blockNumber        Int?
+  status             String              // PENDING, PROCESSING, COMPLETED, FAILED
+  createdAt          DateTime            @default(now())
+}

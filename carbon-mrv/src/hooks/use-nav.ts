@@ -40,7 +40,8 @@ export function useFilteredNavItems(items: NavItem[]) {
       user: user ?? undefined,
       permissions: permissions as string[],
       role: role ?? undefined,
-      hasOrg: !!organization
+      hasOrg: !!organization,
+      appRole: user?.publicMetadata?.role as string | undefined
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable primitives to avoid infinite re-renders from unstable Clerk object refs
   }, [organization?.id, user?.id, membership?.permissions, membership?.role]);
@@ -75,6 +76,13 @@ export function useFilteredNavItems(items: NavItem[]) {
             return false;
           }
           if (accessContext.role !== item.access.role) {
+            return false;
+          }
+        }
+
+        // Check appRole
+        if (item.access.appRole) {
+          if (accessContext.appRole !== item.access.appRole) {
             return false;
           }
         }
@@ -128,6 +136,13 @@ export function useFilteredNavItems(items: NavItem[]) {
                 return false;
               }
               if (accessContext.role !== childItem.access.role) {
+                return false;
+              }
+            }
+
+            // Check appRole
+            if (childItem.access.appRole) {
+              if (accessContext.appRole !== childItem.access.appRole) {
                 return false;
               }
             }
