@@ -50,6 +50,19 @@ export default function AppSidebar() {
   return (
     <Sidebar collapsible='icon'>
       <SidebarHeader className='group-data-[collapsible=icon]:pt-4'>
+        <div className="flex items-center gap-2 px-2 py-2">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform shrink-0">
+            <Icons.logo className="w-4 h-4 fill-current" />
+          </div>
+          <div className="group-data-[collapsible=icon]:hidden flex flex-col">
+            <span className="text-sm font-bold tracking-tight text-neutral-900 dark:text-white">
+              VanaDhara
+            </span>
+            <span className="text-[10px] uppercase font-mono tracking-wider text-emerald-700 dark:text-emerald-400 font-semibold">
+              Registry 2.0
+            </span>
+          </div>
+        </div>
       </SidebarHeader>
       <SidebarContent className='overflow-x-hidden'>
         {filteredGroups.map((group) => (

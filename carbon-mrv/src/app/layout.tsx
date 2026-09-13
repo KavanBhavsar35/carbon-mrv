@@ -20,19 +20,19 @@ export const metadata: Metadata = {
     ? { metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL) }
     : {}),
   title: {
-    default: 'Carbon MRV',
-    template: '%s | Carbon MRV'
+    default: 'VanaDhara',
+    template: '%s | VanaDhara'
   },
   description: 'Verifiable Carbon Credit & Offset Tracking Platform (MRV 2.0)',
   openGraph: {
-    title: 'Carbon MRV',
+    title: 'VanaDhara',
     description: 'Verifiable Carbon Credit & Offset Tracking Platform (MRV 2.0)',
-    siteName: 'Carbon MRV',
+    siteName: 'VanaDhara',
     type: 'website'
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Carbon MRV',
+    title: 'VanaDhara',
     description: 'Verifiable Carbon Credit & Offset Tracking Platform (MRV 2.0)'
   }
 };

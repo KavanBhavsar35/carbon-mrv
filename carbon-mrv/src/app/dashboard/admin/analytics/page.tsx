@@ -87,7 +87,7 @@ export default function AdminAnalyticsPage() {
           </Badge>
           <h1 className='text-2xl font-bold tracking-tight text-foreground'>Platform Analytics</h1>
           <p className='text-sm text-muted-foreground mt-1'>
-            End-to-end visibility into the Carbon MRV ecosystem — from land registration to credit retirement.
+            End-to-end visibility into the VanaDhara ecosystem — from land registration to credit retirement.
           </p>
         </div>
 

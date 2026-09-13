@@ -44,16 +44,16 @@ export function LifecycleTimeline({ currentStage, className = '', compact = fals
   const currentIndex = STAGES.findIndex((s) => s.id === currentStage);
 
   return (
-    <div className={`w-full bg-[#0c1410] border border-emerald-950/70 rounded-2xl p-4 md:p-5 shadow-xl text-neutral-100 ${className}`}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-3 border-b border-emerald-950/50">
+    <div className={`w-full bg-white dark:bg-[#0c1410] border border-emerald-200 dark:border-emerald-950/70 rounded-2xl p-4 md:p-5 shadow-xl text-neutral-900 dark:text-neutral-100 ${className}`}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-3 border-b border-emerald-100 dark:border-emerald-950/50">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
+          <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse" />
+          <span className="text-[11px] font-mono uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-semibold">
             Verifiable Carbon Credit Lifecycle
           </span>
         </div>
-        <div className="text-[11px] text-neutral-400 font-mono">
-          Stage {currentIndex + 1} of {STAGES.length}: <span className="text-emerald-300 font-medium">{STAGES[currentIndex]?.label}</span>
+        <div className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
+          Stage {currentIndex + 1} of {STAGES.length}: <span className="text-emerald-700 dark:text-emerald-300 font-medium">{STAGES[currentIndex]?.label}</span>
         </div>
       </div>
 
@@ -71,28 +71,28 @@ export function LifecycleTimeline({ currentStage, className = '', compact = fals
                   href={stage.href}
                   className={`group flex flex-col items-center text-center p-2 rounded-xl transition-all duration-200 min-w-[76px] ${
                     isCurrent
-                      ? 'bg-emerald-950/80 border border-emerald-500/60 shadow-lg shadow-emerald-950/50'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-500/60 shadow-lg shadow-emerald-100 dark:shadow-emerald-950/50'
                       : isPassed
-                      ? 'bg-neutral-900/50 border border-neutral-800/80 hover:border-emerald-700/60 hover:bg-neutral-900'
-                      : 'bg-neutral-950/40 border border-neutral-900 text-neutral-500 hover:border-neutral-800'
+                      ? 'bg-slate-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800/80 hover:border-emerald-300 dark:hover:border-emerald-700/60 hover:bg-neutral-100 dark:hover:bg-neutral-900'
+                      : 'bg-white dark:bg-neutral-950/40 border border-neutral-100 dark:border-neutral-900 text-neutral-400 dark:text-neutral-500 hover:border-neutral-200 dark:hover:border-neutral-800'
                   }`}
                 >
                   {/* Status Indicator Bubble */}
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono font-bold transition-all ${
                       isCurrent
-                        ? 'bg-emerald-500 text-neutral-950 ring-4 ring-emerald-500/20'
+                        ? 'bg-emerald-600 dark:bg-emerald-500 text-white dark:text-neutral-950 ring-4 ring-emerald-200 dark:ring-emerald-500/20'
                         : isPassed
-                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60'
-                        : 'bg-neutral-900 text-neutral-500 border border-neutral-800'
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60'
+                        : 'bg-neutral-100 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-500 border border-neutral-200 dark:border-neutral-800'
                     }`}
                   >
                     {isPassed ? (
                       <Check className="w-3.5 h-3.5 stroke-[3]" />
                     ) : isCurrent ? (
-                      <span className="w-2 h-2 rounded-full bg-neutral-950" />
+                      <span className="w-2 h-2 rounded-full bg-white dark:bg-neutral-950" />
                     ) : (
-                      <Clock className="w-3 h-3 text-neutral-500" />
+                      <Clock className="w-3 h-3 text-neutral-400 dark:text-neutral-500" />
                     )}
                   </div>
 
@@ -100,10 +100,10 @@ export function LifecycleTimeline({ currentStage, className = '', compact = fals
                   <span
                     className={`mt-2 text-[11px] font-semibold leading-tight line-clamp-1 ${
                       isCurrent
-                        ? 'text-emerald-300 font-bold'
+                        ? 'text-emerald-700 dark:text-emerald-300 font-bold'
                         : isPassed
-                        ? 'text-neutral-200 group-hover:text-white'
-                        : 'text-neutral-500'
+                        ? 'text-neutral-900 dark:text-neutral-200 group-hover:text-emerald-700 dark:group-hover:text-white'
+                        : 'text-neutral-500 dark:text-neutral-500'
                     }`}
                   >
                     {stage.label}
@@ -113,10 +113,10 @@ export function LifecycleTimeline({ currentStage, className = '', compact = fals
                   <span
                     className={`text-[9px] font-mono leading-tight mt-0.5 line-clamp-1 ${
                       isCurrent
-                        ? 'text-emerald-400/90'
+                        ? 'text-emerald-600 dark:text-emerald-400/90'
                         : isPassed
-                        ? 'text-neutral-400'
-                        : 'text-neutral-600'
+                        ? 'text-neutral-500 dark:text-neutral-400'
+                        : 'text-neutral-400 dark:text-neutral-600'
                     }`}
                   >
                     {stage.sublabel}
@@ -125,7 +125,7 @@ export function LifecycleTimeline({ currentStage, className = '', compact = fals
 
                 {idx < STAGES.length - 1 && (
                   <div className="flex items-center px-0.5 text-neutral-700">
-                    <ChevronRight className={`w-3.5 h-3.5 ${isPassed ? 'text-emerald-700/70' : 'text-neutral-800'}`} />
+                    <ChevronRight className={`w-3.5 h-3.5 ${isPassed ? 'text-emerald-300 dark:text-emerald-700/70' : 'text-neutral-200 dark:text-neutral-800'}`} />
                   </div>
                 )}
               </React.Fragment>

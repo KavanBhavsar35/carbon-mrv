@@ -4,7 +4,7 @@ import { getRegistrationStatusAction } from '@/features/onboarding/actions/onboa
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Onboarding & Registration | Carbon MRV',
+  title: 'Onboarding & Registration | VanaDhara',
   description: 'Complete your registration as a Carbon Generator or Credit Buyer.'
 };
 

@@ -4,7 +4,7 @@ import { getRegistrationStatusAction } from '@/features/onboarding/actions/onboa
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Buyer Registration | Carbon MRV',
+  title: 'Buyer Registration | VanaDhara',
   description: 'Register and update your Credit Buyer profile.'
 };
 

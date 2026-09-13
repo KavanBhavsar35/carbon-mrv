@@ -80,7 +80,7 @@ export default async function RetirementCertificatePage({ params }: RetirementPa
 
             <div className="space-y-1">
               <span className="text-[11px] uppercase font-mono tracking-widest text-emerald-400 font-bold block">
-                Circular Carbon Ecosystem • Official Registry Record
+                VanaDhara Ecosystem • Official Registry Record
               </span>
               <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white font-sans uppercase">
                 Carbon Retirement Certificate

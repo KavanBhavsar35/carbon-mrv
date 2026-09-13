@@ -29,7 +29,7 @@ export function RoleSelector({ selectedRole, onSelectRole, onContinue }: RoleSel
           Step 1 &middot; Account Identity
         </Badge>
         <h1 className='text-3xl font-bold tracking-tight sm:text-4xl text-foreground'>
-          How will you participate in Carbon MRV?
+          How will you participate in VanaDhara?
         </h1>
         <p className='text-muted-foreground max-w-xl mx-auto text-sm sm:text-base'>
           Select your primary role in the ecosystem. Your selection customizes your dashboard, verification workflows, and on-chain interactions.

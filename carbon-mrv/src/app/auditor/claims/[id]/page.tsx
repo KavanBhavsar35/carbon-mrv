@@ -7,10 +7,8 @@ import { LifecycleTimeline } from '@/components/eco/LifecycleTimeline';
 import { StatusBadge } from '@/components/eco/StatusBadge';
 import { AuditorQuorum } from '@/components/eco/AuditorQuorum';
 import {
-  FileCheck,
   CheckCircle2,
   Clock,
-  ArrowRight,
   ShieldCheck,
   Trees,
   Layers,

@@ -9,8 +9,8 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 
 export const metadata: Metadata = {
-  title: 'Carbon MRV Dashboard',
-  description: 'Carbon MRV — Circular Carbon Ecosystem Dashboard',
+  title: 'VanaDhara Dashboard',
+  description: 'VanaDhara — VanaDhara Ecosystem Dashboard',
   robots: {
     index: false,
     follow: false

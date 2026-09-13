@@ -81,7 +81,7 @@ export default async function ExtendPage({ params }: { params: Promise<{ id: str
             <div>
               <p className='text-sm font-semibold text-amber-700 dark:text-amber-400'>Feature in Development</p>
               <p className='text-xs text-muted-foreground mt-0.5'>
-                The parcel extension workflow is being built as part of Phase 2 of the Carbon MRV platform.
+                The parcel extension workflow is being built as part of Phase 2 of the VanaDhara platform.
                 You will receive a notification when it becomes available.
               </p>
             </div>

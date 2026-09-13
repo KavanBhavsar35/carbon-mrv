@@ -332,7 +332,7 @@ export const PRIMARY_CREDIT: CreditProvenanceData = {
       date: '02 Sep 2026',
       txHash: '0x55bc120aefbc7812903847ab8901237c18903847ab8901237c18903847ab8901',
       from: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-      to: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199 (EcoTech Global Holdings)'
+      to: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199 (VanaDhara Global Holdings)'
     },
     {
       step: 'PARTIALLY_RETIRED',
@@ -358,7 +358,7 @@ export const PRIMARY_RETIREMENT: RetirementCertificateData = {
   vintage: 2026,
   methodology: 'IPCC Tier-2 Wetland Supplementary Guidance',
   retiredBy: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199',
-  retiredByEntity: 'EcoTech Global Holdings (Corporate Net-Zero 2026 Scope 1 & 2 Neutralization)',
+  retiredByEntity: 'VanaDhara Global Holdings (Corporate Net-Zero 2026 Scope 1 & 2 Neutralization)',
   retiredOn: '13 Sep 2026',
   reason: 'Corporate Net-Zero 2026 Scope 1 & 2 Neutralization Audit Cycle',
   network: 'Ethereum Sepolia',

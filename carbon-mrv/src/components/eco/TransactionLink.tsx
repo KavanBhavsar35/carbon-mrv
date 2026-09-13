@@ -39,16 +39,16 @@ export function TransactionLink({
 
   return (
     <div className={`inline-flex items-center gap-1.5 font-mono text-xs ${className}`}>
-      <span className="text-neutral-300 select-all" title={hash}>
+      <span className="text-neutral-700 dark:text-neutral-300 select-all" title={hash}>
         {displayHash}
       </span>
       <button
         onClick={copyToClipboard}
         title="Copy to clipboard"
-        className="p-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition cursor-pointer"
+        className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer"
       >
         {copied ? (
-          <Check className="w-3 h-3 text-emerald-400" />
+          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
         ) : (
           <Copy className="w-3 h-3" />
         )}
@@ -58,7 +58,7 @@ export function TransactionLink({
         target="_blank"
         rel="noopener noreferrer"
         title="View on Sepolia Explorer"
-        className="p-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-emerald-400 transition"
+        className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
       >
         <ExternalLink className="w-3 h-3" />
       </a>

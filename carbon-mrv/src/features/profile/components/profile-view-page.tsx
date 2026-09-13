@@ -20,7 +20,7 @@ export default async function ProfileViewPage() {
   return (
     <PageContainer>
       <div className='flex w-full flex-col gap-6'>
-        {/* Carbon MRV Profile Card */}
+        {/* VanaDhara Profile Card */}
         {statusData?.isOnboarded && (isGenerator || isBuyer) && (
           <Card className='border shadow-xs overflow-hidden'>
             <div

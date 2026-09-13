@@ -30,19 +30,19 @@ export function StatusBadge({
     switch (normalized) {
       case 'VERIFIED':
       case 'ACTIVE':
-        return 'bg-emerald-950/70 text-emerald-300 border-emerald-700/60 ring-1 ring-emerald-500/20';
+        return 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/60 ring-1 ring-emerald-200 dark:ring-emerald-500/20';
       case 'LOW_RISK':
-        return 'bg-emerald-950/50 text-emerald-400 border-emerald-800/40';
+        return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40';
       case 'PENDING':
       case 'MEDIUM_RISK':
-        return 'bg-amber-950/60 text-amber-300 border-amber-700/60 ring-1 ring-amber-500/20';
+        return 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700/60 ring-1 ring-amber-200 dark:ring-amber-500/20';
       case 'REJECTED':
       case 'HIGH_RISK':
-        return 'bg-red-950/60 text-red-300 border-red-700/60 ring-1 ring-red-500/20';
+        return 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700/60 ring-1 ring-red-200 dark:ring-red-500/20';
       case 'RETIRED':
-        return 'bg-[#15231c] text-emerald-200 border-emerald-600/70 font-mono tracking-wider';
+        return 'bg-emerald-50 dark:bg-[#15231c] text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-600/70 font-mono tracking-wider';
       default:
-        return 'bg-neutral-900 text-neutral-300 border-neutral-700';
+        return 'bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700';
     }
   };
 
