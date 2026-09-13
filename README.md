@@ -157,9 +157,14 @@ Open `http://localhost:3000` in your browser.
 | **Claim Anomaly Detection** | **Real / Fitted ML** | Scikit-learn Isolation Forest model trained on multivariate carbon claim distributions. |
 | **Carbon Accounting Engine** | **Real / Calibrated** | IPCC Tier-2 allometric biophysical formula with 95% confidence bounds. |
 | **Remote Sensing Vision** | **Baseline Spectral CV** | Spectral vegetation canopy extraction (VARI/NDVI) with ground sampling distance hectare scaling, ready for deep-learning checkpoint attachment. |
-| **Blockchain Network** | **Local Testnet** | Hardhat node (Chain ID 31337), seamless deployment to Sepolia/Polygon testnet with `.env` update. |
+| **Blockchain Network** | **Local Testnet & Sepolia** | Hardhat node (Chain ID 31337) and Ethereum Sepolia public testnet (Chain ID 11155111). See [Phase 3 Docs](docs/phase3.md) for Sepolia deployment details. |
 
 ---
+
+## 6. Project Architecture (Phase 3)
+
+The smart contract architecture has been upgraded to a production-grade multi-contract system (ERC-1155 tokens, M-of-N governance, non-permanence reserve pool). Read more in the [Phase 3 Documentation](docs/phase3.md).
+
 
 ## 6. Project Directory Map
 

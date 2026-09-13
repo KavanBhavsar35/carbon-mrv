@@ -8,34 +8,54 @@ async function main() {
   console.log("=================================================================");
 
   const sharedDir = path.join(__dirname, "..", "..", "shared");
-  const addressFilePath = path.join(sharedDir, "contract-address.json");
-  const abiFilePath = path.join(sharedDir, "contract-abi.json");
+  const deploymentPath = path.join(sharedDir, "deployment.json");
+  
+  let registryAddress, tokenAddress, governanceAddress;
+  let registryAbi, tokenAbi, governanceAbi;
 
-  if (!fs.existsSync(addressFilePath) || !fs.existsSync(abiFilePath)) {
-    console.error("[ERROR] Contract artifacts not found. Please run deploy script first.");
+  if (fs.existsSync(deploymentPath)) {
+    const deployment = JSON.parse(fs.readFileSync(deploymentPath, "utf8"));
+    registryAddress = deployment.contracts.CarbonCreditRegistry.address;
+    tokenAddress = deployment.contracts.ProductionCarbonCredit1155.address;
+    governanceAddress = deployment.contracts.AuditorGovernance.address;
+    
+    registryAbi = JSON.parse(fs.readFileSync(path.join(sharedDir, "contract-abi.json"), "utf8"));
+    tokenAbi = JSON.parse(fs.readFileSync(path.join(sharedDir, "token-abi.json"), "utf8"));
+    
+    // We can fetch governance ABI if we exported it. Since we didn't export governance-abi.json explicitly,
+    // wait, we can compile and get it from artifacts directly in this Hardhat environment!
+  } else {
+    console.error("[ERROR] deployment.json not found.");
     process.exit(1);
   }
 
-  const { address } = JSON.parse(fs.readFileSync(addressFilePath, "utf8"));
-  const abi = JSON.parse(fs.readFileSync(abiFilePath, "utf8"));
-
-  console.log(`[*] Connecting to CarbonCreditRegistry at: ${address}`);
   const [signer] = await ethers.getSigners();
-  const registry = new ethers.Contract(address, abi, signer);
+  
+  const GovernanceFactory = await ethers.getContractFactory("AuditorGovernance");
+  const governance = GovernanceFactory.attach(governanceAddress);
+  
+  const TokenFactory = await ethers.getContractFactory("ProductionCarbonCredit1155");
+  const token = TokenFactory.attach(tokenAddress);
 
   const NEXTJS_SYNC_URL = process.env.NEXTJS_SYNC_URL || "http://localhost:3000/api/carbon-credits/sync";
   console.log(`[*] Event Webhook Target: ${NEXTJS_SYNC_URL}`);
 
-  // Listen to CreditIssued
-  registry.on("CreditIssued", async (creditId, claimId, recipient, amount, event) => {
-    console.log(`\n[EVENT: CreditIssued] Credit #${creditId} issued to ${recipient} for ${amount} tCO2e`);
+  governance.on("ProposalExecuted", async (proposalId: any, claimId: any, event: any) => {
+    console.log(`\n[EVENT: ProposalExecuted] Proposal #${proposalId} for Claim ${claimId}`);
     try {
+      const proposal = await governance.proposals(proposalId);
+      
+      const projectIdBigInt = ethers.toBigInt(proposal.projectId);
+      const lower64Bits = projectIdBigInt & ethers.toBigInt("0xFFFFFFFFFFFFFFFF");
+      const tokenId = (ethers.toBigInt(proposal.vintage) << ethers.toBigInt(64)) | lower64Bits;
+      
       const payload = {
-        event: "CreditIssued",
-        creditId: creditId.toString(),
+        event: "CreditIssued", // Maintain compatibility with frontend
+        creditId: tokenId.toString(),
         claimId: claimId.toString(),
-        ownerWallet: recipient,
-        amount: Number(amount),
+        ownerWallet: proposal.recipient,
+        amount: Number(proposal.tokenUnits),
+        vintage: Number(proposal.vintage),
         txHash: event.log.transactionHash,
         blockNumber: event.log.blockNumber
       };
@@ -51,15 +71,15 @@ async function main() {
     }
   });
 
-  // Listen to CreditRetired
-  registry.on("CreditRetired", async (creditId, owner, reason, event) => {
-    console.log(`\n[EVENT: CreditRetired] Credit #${creditId} retired by ${owner}. Reason: ${reason}`);
+  token.on("RetirementRecorded", async (retirementId: any, tokenId: any, retiredBy: any, beneficiary: any, amountUnits: any, reason: any, event: any) => {
+    console.log(`\n[EVENT: RetirementRecorded] Token #${tokenId} retired by ${retiredBy}`);
     try {
       const payload = {
         event: "CreditRetired",
-        creditId: creditId.toString(),
-        ownerWallet: owner,
+        creditId: tokenId.toString(), // Mapping tokenId to creditId for frontend simplicity
+        ownerWallet: retiredBy,
         reason: reason,
+        amount: Number(amountUnits),
         txHash: event.log.transactionHash,
         blockNumber: event.log.blockNumber
       };
@@ -75,7 +95,7 @@ async function main() {
     }
   });
 
-  console.log("[*] Standing listener active. Awaiting on-chain smart contract transactions...\n");
+  console.log("[*] Standing listener active on Governance & Token. Awaiting transactions...\n");
 }
 
 main().catch((error) => {
