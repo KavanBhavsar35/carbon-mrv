@@ -13,7 +13,9 @@
     "format": "oxfmt --write . '!**/*.md' '!**/*.mdc' '!**/*.mdx' '!**/*.yml' '!**/*.yaml'",
     "format:check": "oxfmt --check . '!**/*.md' '!**/*.mdc' '!**/*.mdx' '!**/*.yml' '!**/*.yaml'",
     "prepare": "husky",
-    "set-admin": "node --env-file=.env.local scripts/set-admin-native.js"
+    "set-admin": "node --env-file=.env.local scripts/set-admin-native.js",
+    "seed": "node prisma/seed.mjs",
+    "seed:py": "python3 scripts/seed_db.py"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

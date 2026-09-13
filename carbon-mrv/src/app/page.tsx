@@ -1,109 +1,217 @@
+import React from 'react';
 import Link from 'next/link';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { Icons } from '@/components/icons';
+import { EcoNavbar } from '@/components/eco/EcoNavbar';
+import { EcoFooter } from '@/components/eco/EcoFooter';
+import { LifecycleTimeline } from '@/components/eco/LifecycleTimeline';
+import { StatusBadge } from '@/components/eco/StatusBadge';
+import {
+  Leaf,
+  ShieldCheck,
+  ArrowRight,
+  Sparkles,
+  Layers,
+  Satellite,
+  UserCheck,
+  Award,
+  ExternalLink,
+  Lock,
+  TreeDeciduous,
+  CheckCircle2
+} from 'lucide-react';
 
 export default function LandingPage() {
+  const demoPages = [
+    {
+      num: '01',
+      title: 'Project & MRV Detail',
+      route: '/projects/MRV-2026-001',
+      badge: 'Origin',
+      headline: 'Mangrove Restoration — Gujarat',
+      desc: 'Satellite observation (42.7 ha, +21.57% canopy delta) with SHA-256 integrity hash anchoring and UNet biomass estimation (125.7 tCO₂e).',
+      tag: 'MRV Evidence'
+    },
+    {
+      num: '02',
+      title: 'Auditor Review & Quorum',
+      route: '/auditor/claims/CL-1024',
+      badge: 'Governance',
+      headline: '2-of-3 Multi-Party Consensus',
+      desc: 'Independent certifications from Bureau Veritas, DNV GL, and TÜV SÜD enforcing anti-self-approval before minting authorization.',
+      tag: 'Auditor Quorum'
+    },
+    {
+      num: '03',
+      title: 'Credit Provenance Chain',
+      route: '/credits/CC-001',
+      badge: 'Issuance',
+      headline: 'ERC-1155 Token #1 (1,000 tCO₂e)',
+      desc: 'End-to-end audit trail on Ethereum Sepolia with 15% automatic allocation to the non-permanence risk buffer pool.',
+      tag: 'Blockchain Anchor'
+    },
+    {
+      num: '04',
+      title: 'Retirement Certificate',
+      route: '/retirements/RC-2026-00421',
+      badge: 'Offset',
+      headline: 'Certificate #RC-2026-00421',
+      desc: 'Official certificate for 25.000 tCO₂e permanently retired by EcoTech Global Holdings for corporate net-zero compliance.',
+      tag: 'Printable Certificate'
+    },
+    {
+      num: '05',
+      title: 'Public Zero-Auth Verifier',
+      route: '/verify/RC-2026-00421',
+      badge: 'Trust',
+      headline: 'Instant 10-Second Validation',
+      desc: 'Zero-authentication public verification demonstrating 7 of 7 cryptographic invariant checks and on-chain burn confirmation.',
+      tag: 'Public Proof'
+    }
+  ];
+
   return (
-    <div className='flex min-h-screen flex-col bg-background text-foreground'>
-      <header className='flex items-center justify-between p-6 lg:px-8 border-b'>
-        <div className='flex items-center gap-2'>
-          <Icons.logo className='h-8 w-8 text-primary' />
-          <span className='text-xl font-bold'>Carbon MRV</span>
-        </div>
-        <nav className='flex items-center gap-3'>
-          <Link href='/auth/sign-in' className={buttonVariants({ variant: 'ghost' })}>
-            Sign In
-          </Link>
-          <Link href='/auth/sign-up' className={buttonVariants({ variant: 'default' })}>
-            Get Started
-          </Link>
-        </nav>
-      </header>
+    <div className="min-h-screen bg-[#070b09] text-neutral-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-neutral-950">
+      <EcoNavbar />
 
-      <main className='flex-1'>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
         {/* Hero Section */}
-        <section className='relative px-6 lg:px-8 py-24 sm:py-32 flex flex-col items-center text-center overflow-hidden'>
-          <div className='absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background' />
+        <section className="relative rounded-3xl bg-gradient-to-b from-[#0c1410] via-[#09100d] to-[#070b09] border border-emerald-950/70 p-8 sm:p-14 text-center overflow-hidden shadow-2xl">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          <h1 className='text-4xl font-extrabold tracking-tight sm:text-6xl max-w-3xl'>
-            Verifiable Carbon Credit &amp; Offset Tracking Platform
-          </h1>
-          <p className='mt-6 text-lg leading-8 text-muted-foreground max-w-2xl'>
-            Empowering the circular carbon ecosystem with transparent Measurement, Reporting, and
-            Verification. Connect buyers and generators with immutable on-chain tracking and
-            AI-powered estimation.
-          </p>
-          <div className='mt-10 flex items-center justify-center gap-x-4 flex-wrap gap-y-3'>
-            <Link
-              href='/auth/sign-up'
-              className={cn(
-                buttonVariants({ size: 'lg' }),
-                'gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-500 hover:to-teal-500 shadow-lg'
-              )}
-            >
-              Get Started <Icons.chevronRight className='h-4 w-4' />
-            </Link>
-            <Link href='/auth/sign-in' className={buttonVariants({ variant: 'outline', size: 'lg' })}>
-              Sign In
-            </Link>
+          <div className="relative z-10 max-w-4xl mx-auto space-y-6">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-xs font-mono font-semibold shadow-inner">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Circular Carbon Ecosystem • Live on Ethereum Sepolia</span>
+            </div>
+
+            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white font-sans leading-tight">
+              Verifiable Carbon Credit &amp; Offset Tracking System
+            </h1>
+
+            <p className="text-base sm:text-lg text-neutral-300 max-w-2xl mx-auto leading-relaxed">
+              Tracking carbon credits end-to-end: from satellite biophysical observation,
+              ML anomaly verification, and 2-of-3 auditor quorum to semi-fungible ERC-1155 issuance,
+              partial retirement, and instant public verification.
+            </p>
+
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-4">
+              <Link
+                href="/projects/MRV-2026-001"
+                className="px-7 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-sm font-bold font-mono tracking-wider uppercase transition shadow-xl shadow-emerald-950/80 flex items-center gap-2 group"
+              >
+                <span>Launch Demo Journey</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+
+              <Link
+                href="/verify/RC-2026-00421"
+                className="px-6 py-3.5 rounded-xl bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 text-neutral-200 text-sm font-semibold transition flex items-center gap-2"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Public Verifier</span>
+              </Link>
+            </div>
           </div>
         </section>
 
-        {/* References Section */}
-        <section id='references' className='py-24 sm:py-32 bg-muted/30 border-t'>
-          <div className='mx-auto max-w-7xl px-6 lg:px-8'>
-            <div className='mx-auto max-w-2xl text-center'>
-              <h2 className='text-3xl font-bold tracking-tight sm:text-4xl'>Why Carbon MRV?</h2>
-              <p className='mt-4 text-lg leading-8 text-muted-foreground'>
-                Our platform bridges the gap between grassroots conservation efforts and global ESG
-                goals.
-              </p>
+        {/* Global Lifecycle Bar */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase font-mono tracking-wider text-emerald-400 font-semibold">
+              End-to-End Demonstration Architecture
+            </span>
+            <span className="text-xs font-mono text-neutral-400">5 Primary Milestones</span>
+          </div>
+          <LifecycleTimeline currentStage="evidence" />
+        </section>
+
+        {/* The 5 Primary Demonstration Pages Cards */}
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span className="text-xs uppercase font-mono tracking-wider text-emerald-400 font-semibold">
+                Demonstration Flow
+              </span>
+              <h2 className="text-2xl font-bold text-white font-sans mt-0.5">
+                The 5 Core Lifecycle Screens
+              </h2>
             </div>
+            <span className="text-xs font-mono text-neutral-400">
+              One Unified Project: Mangrove Restoration — Gujarat
+            </span>
+          </div>
 
-            <div className='mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none'>
-              <dl className='grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3'>
-                <div className='flex flex-col items-start'>
-                  <div className='rounded-lg bg-primary/10 p-3 ring-1 ring-primary/20 mb-4'>
-                    <Icons.map className='h-6 w-6 text-primary' />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {demoPages.map((p) => (
+              <Link
+                key={p.num}
+                href={p.route}
+                className="group relative bg-[#0c1410] border border-emerald-950/70 hover:border-emerald-700/80 rounded-2xl p-6 shadow-xl transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-emerald-400">
+                      PAGE {p.num}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-800/40">
+                      {p.badge}
+                    </span>
                   </div>
-                  <dt className='text-xl font-semibold leading-7'>Geospatial Verification</dt>
-                  <dd className='mt-2 text-base leading-7 text-muted-foreground'>
-                    Using satellite imagery and drone data, our integrated ML pipeline verifies land
-                    parcels and estimates carbon biomass with high confidence.
-                  </dd>
+
+                  <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors font-sans">
+                    {p.title}
+                  </h3>
+
+                  <div className="text-xs font-mono text-neutral-300 font-medium">
+                    {p.headline}
+                  </div>
+
+                  <p className="text-xs text-neutral-400 leading-relaxed font-sans">
+                    {p.desc}
+                  </p>
                 </div>
 
-                <div className='flex flex-col items-start'>
-                  <div className='rounded-lg bg-primary/10 p-3 ring-1 ring-primary/20 mb-4'>
-                    <Icons.kanban className='h-6 w-6 text-primary' />
-                  </div>
-                  <dt className='text-xl font-semibold leading-7'>Transparent MRV Pipeline</dt>
-                  <dd className='mt-2 text-base leading-7 text-muted-foreground'>
-                    Strict workflows ensure all claims undergo rigorous estimation and human-in-the-loop
-                    approvals before any credits are minted.
-                  </dd>
+                <div className="mt-6 pt-4 border-t border-emerald-950/50 flex items-center justify-between text-xs font-mono">
+                  <span className="text-emerald-400/80">{p.tag}</span>
+                  <span className="text-white group-hover:text-emerald-300 inline-flex items-center gap-1 font-semibold">
+                    <span>Inspect</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </div>
+              </Link>
+            ))}
+
+            {/* Quick Summary Card */}
+            <div className="bg-gradient-to-br from-emerald-950/40 to-[#0c1410] border border-emerald-800/50 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-bold uppercase">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Trust &amp; Integrity</span>
                 </div>
 
-                <div className='flex flex-col items-start'>
-                  <div className='rounded-lg bg-primary/10 p-3 ring-1 ring-primary/20 mb-4'>
-                    <Icons.wallet className='h-6 w-6 text-primary' />
-                  </div>
-                  <dt className='text-xl font-semibold leading-7'>On-Chain Tracking</dt>
-                  <dd className='mt-2 text-base leading-7 text-muted-foreground'>
-                    Every credit issued, sold, and retired is recorded immutably on the blockchain,
-                    preventing double-counting and ensuring 100% traceability.
-                  </dd>
-                </div>
-              </dl>
+                <h3 className="text-lg font-bold text-white font-sans">
+                  The Blockchain is the Trust Layer
+                </h3>
+
+                <p className="text-xs text-neutral-300 leading-relaxed font-sans">
+                  Our system keeps complex crypto jargon secondary. Buyers and auditors interact with
+                  clear, verifiable carbon accounting backed by Ethereum Sepolia smart contracts.
+                </p>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-emerald-950/50">
+                <Link
+                  href="/projects/MRV-2026-001"
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-mono tracking-wider uppercase transition text-center block"
+                >
+                  Start Demo at Page 1 →
+                </Link>
+              </div>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className='border-t py-8 text-center text-sm text-muted-foreground'>
-        <p>&copy; {new Date().getFullYear()} Carbon MRV. All rights reserved.</p>
-      </footer>
+      <EcoFooter />
     </div>
   );
 }
